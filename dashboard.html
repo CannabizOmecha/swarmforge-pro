@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-gradient-to-br from-purple-900 p-8 text-white min-h-screen">
+<div class="max-w-4xl mx-auto">
+<h1 class="text-6xl font-bold text-center mb-12 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">🚀 SWARMFORGE PRO 2.0</h1>
+<div class="grid md:grid-cols-2 gap-8">
+<div class="bg-white/10 p-8 rounded-2xl">
+<h2 class="text-3xl font-bold mb-6">Deploy</h2>
+<button id="deploy" class="w-full bg-green-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-green-600">🚀 DEPLOY</button>
+<pre id="deployResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
+</div>
+<div class="bg-white/10 p-8 rounded-2xl">
+<h2 class="text-3xl font-bold mb-6">Revenue</h2>
+<button id="revenue" class="w-full bg-blue-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-blue-600">💰 REVENUE</button>
+<pre id="revenueResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
+</div>
+</div>
+</div>
+<script>
+document.getElementById('deploy').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/deploy',{method:'POST'});document.getElementById('deployResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('deployResult').classList.remove('hidden')}catch(e){document.getElementById('deployResult').textContent='ERROR: Backend not running'}}
+document.getElementById('revenue').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/revenue');document.getElementById('revenueResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('revenueResult').classList.remove('hidden')}catch(e){document.getElementById('revenueResult').textContent='ERROR: Backend not running'}}
+</script>
+</body>
+</html>
