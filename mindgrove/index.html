@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1b12">
+<title>MindGrove — a grove that grows your mind</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#0d1b12; touch-action:none;
+    font-family:'Segoe UI', system-ui, sans-serif; user-select:none; -webkit-user-select:none; }
+  #game { display:block; width:100vw; height:100vh; image-rendering:pixelated; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; top:env(safe-area-inset-top, 0); left:0; right:0; padding:8px 10px;
+    display:flex; gap:8px; align-items:center; pointer-events:none; z-index:5; }
+  #hud .badge { background:rgba(10,25,15,.82); border:1px solid #3a5f43; border-radius:10px;
+    color:#cfe8d4; font-size:12px; padding:5px 9px; }
+  #xpwrap { flex:1; max-width:160px; background:rgba(10,25,15,.82); border:1px solid #3a5f43;
+    border-radius:10px; padding:4px 8px; }
+  #xpwrap .lbl { font-size:10px; color:#9fc7a8; }
+  #xpbar { height:6px; background:#1c3324; border-radius:3px; overflow:hidden; margin-top:2px; }
+  #xpfill { height:100%; width:0%; background:linear-gradient(90deg,#54d97c,#bdf26d); transition:width .4s; }
+
+  /* ---------- D-pad + A button ---------- */
+  #controls { position:fixed; inset:0; pointer-events:none; z-index:6; }
+  #dpad { position:absolute; left:18px; bottom:calc(26px + env(safe-area-inset-bottom,0));
+    width:150px; height:150px; pointer-events:auto; }
+  .dbtn { position:absolute; width:50px; height:50px; background:rgba(28,51,36,.85);
+    border:1px solid #4a7a56; border-radius:10px; display:flex; align-items:center;
+    justify-content:center; color:#9fc7a8; font-size:20px; }
+  .dbtn.active { background:rgba(84,217,124,.55); color:#fff; }
+  #d-up    { left:50px; top:0; }
+  #d-down  { left:50px; top:100px; }
+  #d-left  { left:0;  top:50px; }
+  #d-right { left:100px; top:50px; }
+  #btnA { position:absolute; right:26px; bottom:calc(60px + env(safe-area-inset-bottom,0));
+    width:74px; height:74px; border-radius:50%; background:rgba(84,217,124,.28);
+    border:2px solid #54d97c; color:#bdf26d; font-size:24px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; pointer-events:auto; }
+  #btnA:active { background:rgba(84,217,124,.6); }
+
+  /* ---------- Dialogue box ---------- */
+  #dialog { position:fixed; left:10px; right:10px; bottom:calc(12px + env(safe-area-inset-bottom,0));
+    background:rgba(8,20,12,.95); border:2px solid #54d97c; border-radius:14px;
+    padding:14px 16px 22px; color:#e7f5ea; font-size:15px; line-height:1.5;
+    min-height:86px; display:none; z-index:8; }
+  #dialog .who { color:#bdf26d; font-weight:700; font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; margin-bottom:4px; }
+  #dialog .next { position:absolute; right:14px; bottom:8px; color:#54d97c; font-size:12px;
+    animation:blink 1s infinite; }
+  @keyframes blink { 50% { opacity:.2; } }
+
+  /* ---------- Puzzle overlay ---------- */
+  #overlay { position:fixed; inset:0; background:rgba(6,14,9,.97); z-index:10; display:none;
+    flex-direction:column; color:#e7f5ea; padding:calc(10px + env(safe-area-inset-top,0)) 14px
+    calc(14px + env(safe-area-inset-bottom,0)); overflow-y:auto; }
+  #overlay h2 { font-size:18px; color:#bdf26d; margin-bottom:2px; }
+  #overlay .sub { font-size:12px; color:#9fc7a8; margin-bottom:10px; }
+  #stage { flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:14px; }
+  .timerbar { width:min(90vw,360px); height:8px; background:#1c3324; border-radius:4px; overflow:hidden; }
+  .timerbar > div { height:100%; background:#f2c94c; width:100%; }
+  .bigword { font-size:46px; font-weight:800; letter-spacing:.02em; }
+  .choices { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .choice { min-width:74px; min-height:58px; border-radius:12px; border:2px solid #3a5f43;
+    background:#14271b; color:#e7f5ea; font-size:16px; font-weight:700; padding:8px 14px; }
+  .choice:active { transform:scale(.96); }
+  .corsi { display:grid; gap:8px; }
+  .corsi .cell { width:62px; height:62px; border-radius:10px; background:#1c3324;
+    border:2px solid #3a5f43; }
+  .corsi .cell.lit { background:#54d97c; border-color:#bdf26d; box-shadow:0 0 18px #54d97c; }
+  .corsi .cell.good { background:#2e7d4f; }
+  .corsi .cell.bad { background:#8d3b3b; }
+  .rulebanner { font-size:13px; letter-spacing:.2em; color:#0d1b12; background:#bdf26d;
+    padding:6px 18px; border-radius:999px; font-weight:800; }
+  .seqrow { display:flex; gap:8px; align-items:center; }
+  .seqrow .slot { width:64px; height:64px; border-radius:12px; background:#14271b;
+    border:2px solid #3a5f43; display:flex; align-items:center; justify-content:center; }
+  .seqrow .slot.q { border-style:dashed; color:#bdf26d; font-size:26px; font-weight:800; }
+  .optgrid { display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; }
+  .optgrid .slot { width:84px; height:84px; }
+  .optgrid .slot:active { transform:scale(.96); }
+  .feedback { font-size:14px; color:#cfe8d4; text-align:center; max-width:340px; line-height:1.5; }
+  .statline { font-size:13px; color:#9fc7a8; }
+  .primary { background:#54d97c; color:#0d1b12; border:none; border-radius:12px;
+    font-size:16px; font-weight:800; padding:14px 30px; }
+  .ghost { background:none; border:1px solid #3a5f43; color:#9fc7a8; border-radius:12px;
+    font-size:13px; padding:10px 20px; }
+  .pulse-good { animation:pgood .35s; } @keyframes pgood { 0%{background:#2e7d4f} }
+  .pulse-bad  { animation:pbad .35s; }  @keyframes pbad  { 0%{background:#8d3b3b} }
+  .resultcard { background:#14271b; border:1px solid #3a5f43; border-radius:16px;
+    padding:20px; max-width:360px; text-align:center; display:flex; flex-direction:column; gap:10px; }
+  .resultcard .acc { font-size:40px; font-weight:800; color:#bdf26d; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="badge" id="hud-level">Lv 1</div>
+  <div id="xpwrap"><div class="lbl" id="xp-lbl">Trainer XP</div><div id="xpbar"><div id="xpfill"></div></div></div>
+  <div class="badge" id="hud-hint">Find the Sage</div>
+</div>
+
+<div id="controls">
+  <div id="dpad">
+    <div class="dbtn" id="d-up" data-dir="up">&#9650;</div>
+    <div class="dbtn" id="d-left" data-dir="left">&#9664;</div>
+    <div class="dbtn" id="d-right" data-dir="right">&#9654;</div>
+    <div class="dbtn" id="d-down" data-dir="down">&#9660;</div>
+  </div>
+  <div id="btnA">A</div>
+</div>
+
+<div id="dialog">
+  <div class="who" id="dlg-who"></div>
+  <div id="dlg-text"></div>
+  <div class="next">&#9660; A</div>
+</div>
+
+<div id="overlay">
+  <button id="ov-quit" class="ghost" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0));right:14px;">&#10005; Leave</button>
+  <h2 id="ov-title"></h2>
+  <div class="sub" id="ov-sub"></div>
+  <div id="stage"></div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   MindGrove — a pocket world that trains the mind.
+   Overworld: Pokémon-style grid movement (D-pad + A).
+   Four shrines train distinct executive functions; an adaptive engine
+   keeps every player inside their zone of proximal development.
+   ===================================================================== */
+
+/* ---------------- Save state ---------------- */
+const SAVE_KEY = 'mindgrove-save-v1';
+const defaultSave = () => ({
+  xp: 0,
+  intro: false,
+  skills: {
+    memory:  { level: 1, lastTrained: 0, sessions: 0, bestAcc: 0 },
+    focus:   { level: 1, lastTrained: 0, sessions: 0, bestAcc: 0 },
+    shift:   { level: 1, lastTrained: 0, sessions: 0, bestAcc: 0 },
+    pattern: { level: 1, lastTrained: 0, sessions: 0, bestAcc: 0 },
+  },
+});
+let save;
+try { save = Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') || {}); }
+catch (e) { save = defaultSave(); }
+const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} };
+
+const SKILLS = {
+  memory:  { name: 'Memory Shrine',  trains: 'working memory',       tile: 'M', hue: '#5aa9f2' },
+  focus:   { name: 'Focus Shrine',   trains: 'inhibitory control',   tile: 'F', hue: '#f2785a' },
+  shift:   { name: 'Shift Shrine',   trains: 'cognitive flexibility',tile: 'S', hue: '#c08af2' },
+  pattern: { name: 'Pattern Shrine', trains: 'fluid reasoning',      tile: 'P', hue: '#f2c94c' },
+};
+
+/* Spacing model: each skill's "vitality" decays like a forgetting curve.
+   Higher skill level => longer half-life (stability grows with practice). */
+function vitality(skill) {
+  const s = save.skills[skill];
+  if (!s.lastTrained) return 0;
+  const hours = (Date.now() - s.lastTrained) / 3.6e6;
+  const halfLife = 8 + s.level * 4; // hours
+  return Math.exp(-Math.LN2 * hours / halfLife);
+}
+function weakestSkill() {
+  let best = null, bestV = Infinity;
+  for (const k of Object.keys(SKILLS)) {
+    const v = vitality(k);
+    if (v < bestV) { bestV = v; best = k; }
+  }
+  return best;
+}
+
+const trainerLevel = () => 1 + Math.floor(Math.sqrt(save.xp / 60));
+const xpIntoLevel = () => {
+  const lv = trainerLevel();
+  const lo = 60 * (lv - 1) * (lv - 1), hi = 60 * lv * lv;
+  return (save.xp - lo) / (hi - lo);
+};
+
+/* ---------------- World map ---------------- */
+/* legend: t tree, w water, . grass, f flowers, p path, s sign,
+           M/F/S/P shrines, G the Sage */
+const MAP = [
+  'tttttttttttttttttttttt',
+  't....t..f.....f..t...t',
+  't.f..........M.......t',
+  't.....f......p....f..t',
+  't..wwww......p.......t',
+  't..wwww......p...f...t',
+  't............p.......t',
+  't...F.pppppppGppppS..t',
+  't.....p......p.......t',
+  't..f..p......p..f....t',
+  't.....p......p.......t',
+  't.f...p......p....f..t',
+  't.....p......P.......t',
+  't........s...........t',
+  't...f.......f....f...t',
+  't.....t..........t...t',
+  'tttttttttttttttttttttt',
+];
+const MW = MAP[0].length, MH = MAP.length;
+const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 't' : MAP[y][x];
+const SOLID = new Set(['t', 'w', 'M', 'F', 'S', 'P', 'G', 's']);
+const TILE_SKILL = { M: 'memory', F: 'focus', S: 'shift', P: 'pattern' };
+
+/* ---------------- Canvas / camera ---------------- */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let TS = 48, VW = 0, VH = 0;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  VW = window.innerWidth; VH = window.innerHeight;
+  canvas.width = VW * dpr; canvas.height = VH * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  TS = Math.max(36, Math.floor(Math.min(VW, VH) / 9));
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------------- Player ---------------- */
+const player = {
+  x: 10, y: 13,            // grid coords
+  px: 10, py: 13,          // smooth pixel-grid coords
+  facing: 'up',
+  moving: false, mx: 0, my: 0, t: 0,
+};
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+let mode = 'world';        // world | dialog | puzzle
+let held = null;           // direction currently held
+
+function tryStep(dir) {
+  player.facing = dir;
+  const [dx, dy] = DIRS[dir];
+  const nx = player.x + dx, ny = player.y + dy;
+  if (SOLID.has(tileAt(nx, ny))) return;
+  player.moving = true; player.mx = dx; player.my = dy; player.t = 0;
+}
+
+/* ---------------- Input ---------------- */
+const KEYMAP = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right',
+                 w:'up', s:'down', a:'left', d:'right' };
+window.addEventListener('keydown', e => {
+  if (KEYMAP[e.key]) { held = KEYMAP[e.key]; e.preventDefault(); }
+  if ((e.key === 'z' || e.key === 'Enter' || e.key === ' ') && mode !== 'puzzle') { pressA(); e.preventDefault(); }
+});
+window.addEventListener('keyup', e => { if (KEYMAP[e.key] === held) held = null; });
+
+const dbtns = document.querySelectorAll('.dbtn');
+function setHeldFromTouch(e) {
+  let dir = null;
+  for (const t of e.touches) {
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    if (el && el.dataset && el.dataset.dir) dir = el.dataset.dir;
+  }
+  held = dir;
+  dbtns.forEach(b => b.classList.toggle('active', b.dataset.dir === dir));
+}
+const dpad = document.getElementById('dpad');
+for (const ev of ['touchstart', 'touchmove']) dpad.addEventListener(ev, e => { e.preventDefault(); setHeldFromTouch(e); }, { passive:false });
+for (const ev of ['touchend', 'touchcancel']) dpad.addEventListener(ev, e => { e.preventDefault(); setHeldFromTouch(e); }, { passive:false });
+/* mouse fallback for desktop testing */
+dbtns.forEach(b => {
+  b.addEventListener('mousedown', () => { held = b.dataset.dir; b.classList.add('active'); });
+  b.addEventListener('mouseup',   () => { held = null; b.classList.remove('active'); });
+  b.addEventListener('mouseleave',() => { if (held === b.dataset.dir) held = null; b.classList.remove('active'); });
+});
+const btnA = document.getElementById('btnA');
+btnA.addEventListener('touchstart', e => { e.preventDefault(); pressA(); }, { passive:false });
+btnA.addEventListener('mousedown', e => { e.preventDefault(); pressA(); });
+document.getElementById('dialog').addEventListener('click', () => { if (mode === 'dialog') pressA(); });
+
+/* ---------------- Dialogue ---------------- */
+const dlgEl = document.getElementById('dialog');
+const dlgWho = document.getElementById('dlg-who');
+const dlgText = document.getElementById('dlg-text');
+let dlgQueue = [], dlgTyping = false, dlgFull = '', dlgTimer = null, dlgDone = null;
+
+function startDialog(who, lines, onDone) {
+  mode = 'dialog'; held = null;
+  dlgQueue = lines.slice(); dlgDone = onDone || null;
+  dlgWho.textContent = who;
+  dlgEl.style.display = 'block';
+  nextDialogLine();
+}
+function nextDialogLine() {
+  const line = dlgQueue.shift();
+  if (line === undefined) {
+    dlgEl.style.display = 'none';
+    mode = 'world';
+    const cb = dlgDone; dlgDone = null;
+    if (cb) cb();
+    return;
+  }
+  dlgFull = line; dlgText.textContent = ''; dlgTyping = true;
+  let i = 0;
+  clearInterval(dlgTimer);
+  dlgTimer = setInterval(() => {
+    dlgText.textContent = dlgFull.slice(0, ++i);
+    if (i >= dlgFull.length) { dlgTyping = false; clearInterval(dlgTimer); }
+  }, 18);
+}
+function pressA() {
+  if (mode === 'dialog') {
+    if (dlgTyping) { clearInterval(dlgTimer); dlgText.textContent = dlgFull; dlgTyping = false; }
+    else nextDialogLine();
+    return;
+  }
+  if (mode !== 'world' || player.moving) return;
+  const [dx, dy] = DIRS[player.facing];
+  interact(tileAt(player.x + dx, player.y + dy));
+}
+
+/* ---------------- Interactions ---------------- */
+function interact(tile) {
+  if (tile === 's') {
+    startDialog('Old Sign', [
+      'Welcome to MindGrove. Move with the pad, press A to talk and choose.',
+      'Four shrines circle the grove. Each one trains a different power of your mind.',
+      'Shrines glow dim when their training is fading from you — that is the best moment to return.',
+    ]);
+  } else if (tile === 'G') {
+    sageTalk();
+  } else if (TILE_SKILL[tile]) {
+    shrineTalk(TILE_SKILL[tile]);
+  }
+}
+
+function sageTalk() {
+  const weak = weakestSkill();
+  const v = Math.round(vitality(weak) * 100);
+  const lines = [];
+  if (!save.intro) {
+    save.intro = true; persist();
+    lines.push(
+      'Ah, a new mind wanders into the grove. I am the Sage.',
+      'This place is alive: every shrine here trains one power of your thinking — memory, focus, flexibility, reasoning.',
+      'The grove watches how you do. Succeed, and the trials deepen. Struggle, and they ease — you will always train at the edge of what you can do. That edge is where minds grow.',
+      'One more secret: what you learn fades on a curve. Return to a fading shrine and the memory roots itself far deeper than drilling it all at once.',
+      'Mix your training. A grove of one tree is no grove at all. Now go — the ' + SKILLS[weak].name + ' calls to you first.'
+    );
+  } else {
+    lines.push(
+      'Welcome back, wanderer.',
+      'Your ' + SKILLS[weak].trains + ' is at ' + v + '% vitality — the ' + SKILLS[weak].name + ' would root deepest right now.',
+      pickTip()
+    );
+  }
+  startDialog('Sage', lines);
+}
+const TIPS = [
+  'Struggle is not failure. A trial that feels hard is a trial that is working.',
+  'Chunk what you must remember — group the pieces, and you carry more.',
+  'Name the rule out loud in your head before each trial. It steadies the switching mind.',
+  'Sleep is the grove’s night gardener. What you train today is planted tonight.',
+  'Do not chase streaks. Chase the edge — about one trial in four should defeat you.',
+  'When a word fights its own color, soften your eyes and let the ink speak first.',
+];
+const pickTip = () => TIPS[Math.floor(Math.random() * TIPS.length)];
+
+function shrineTalk(skill) {
+  const meta = SKILLS[skill], st = save.skills[skill];
+  const v = Math.round(vitality(skill) * 100);
+  startDialog(meta.name, [
+    'This shrine trains ' + meta.trains + '. Depth ' + st.level + ' · vitality ' + v + '%.',
+    'Step into the trial?  (A to begin)',
+  ], () => openPuzzle(skill));
+}
+
+/* =====================================================================
+   ADAPTIVE ENGINE
+   A staircase holding every player near ~75% success — the empirical
+   sweet spot for learning (and the floor of the flow channel).
+   ===================================================================== */
+function adaptLevel(skill, acc) {
+  const s = save.skills[skill];
+  let delta = 0, note;
+  if (acc >= 0.85)      { delta = 1;    note = 'The shrine deepens. Your trials grow harder — exactly as they should.'; }
+  else if (acc >= 0.6)  { delta = 0.34; note = 'You are at the growing edge. Stay here and the roots thicken.'; }
+  else if (acc >= 0.4)  { delta = 0;    note = 'A worthy struggle. The shrine holds its depth for you.'; }
+  else                  { delta = -1;   note = 'The shrine eases its trial. Easier is not weaker — it is the right rung of the ladder.'; }
+  s.level = Math.max(1, Math.round((s.level + delta) * 100) / 100);
+  s.lastTrained = Date.now();
+  s.sessions++;
+  s.bestAcc = Math.max(s.bestAcc, acc);
+  return note;
+}
+/* Growth-mindset feedback: always praise process/strategy, never innate talent. */
+const PRAISE_HI = [
+  'Your strategy carried that — keep refining it.',
+  'That focus you held between trials? That is a trainable muscle, and you just trained it.',
+  'Strong work. The next depth will push back harder — good.',
+];
+const PRAISE_LO = [
+  'Hard sessions grow the mind more than easy ones. The grove counts effort, and it counted yours.',
+  'Every error today is a path your mind will not lose tomorrow.',
+  'You stayed through the struggle. That choice matters more than this score.',
+];
+const praiseFor = acc => (acc >= 0.6 ? PRAISE_HI : PRAISE_LO)[Math.floor(Math.random() * 3)];
+
+/* =====================================================================
+   PUZZLE FRAMEWORK
+   ===================================================================== */
+const overlay = document.getElementById('overlay');
+const stage = document.getElementById('stage');
+const ovTitle = document.getElementById('ov-title');
+const ovSub = document.getElementById('ov-sub');
+
+let puzzleGen = 0; // bumped on open/close so abandoned async trial loops self-terminate
+const live = gen => gen === puzzleGen;
+
+function openPuzzle(skill) {
+  mode = 'puzzle'; held = null;
+  const gen = ++puzzleGen;
+  const meta = SKILLS[skill], st = save.skills[skill];
+  ovTitle.textContent = meta.name;
+  ovSub.textContent = 'Trains ' + meta.trains + ' · depth ' + st.level;
+  overlay.style.display = 'flex';
+  stage.innerHTML = '';
+  PUZZLES[skill](Math.round(st.level), res => { if (live(gen)) finishPuzzle(skill, res); }, gen);
+}
+function finishPuzzle(skill, res) {
+  const acc = res.correct / res.total;
+  const note = adaptLevel(skill, acc);
+  const gained = Math.round(5 + acc * 10 * Math.sqrt(save.skills[skill].level));
+  save.xp += gained;
+  persist(); updateHUD();
+  stage.innerHTML = '';
+  const card = el('div', 'resultcard');
+  card.appendChild(el('div', 'acc', Math.round(acc * 100) + '%'));
+  card.appendChild(el('div', 'statline', res.correct + ' / ' + res.total + ' · +' + gained + ' XP · depth now ' + save.skills[skill].level));
+  card.appendChild(el('div', 'feedback', note));
+  card.appendChild(el('div', 'feedback', praiseFor(acc)));
+  const again = el('button', 'primary', 'Train again');
+  again.onclick = () => openPuzzle(skill);
+  const leave = el('button', 'ghost', 'Return to the grove');
+  leave.onclick = closePuzzle;
+  card.appendChild(again); card.appendChild(leave);
+  stage.appendChild(card);
+}
+function closePuzzle() { puzzleGen++; overlay.style.display = 'none'; stage.innerHTML = ''; mode = 'world'; }
+document.getElementById('ov-quit').addEventListener('click', closePuzzle);
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rand = a => a[Math.floor(Math.random() * a.length)];
+
+/* Per-trial countdown bar; resolves null on timeout. */
+function timedChoice(buttons, ms) {
+  return new Promise(resolve => {
+    const bar = el('div', 'timerbar'); const fill = el('div'); bar.appendChild(fill);
+    stage.appendChild(bar);
+    const t0 = performance.now();
+    let done = false;
+    const tick = () => {
+      if (done) return;
+      const left = 1 - (performance.now() - t0) / ms;
+      if (left <= 0) { done = true; resolve(null); return; }
+      fill.style.width = (left * 100) + '%';
+      requestAnimationFrame(tick);
+    };
+    tick();
+    buttons.forEach(([btn, val]) => btn.onclick = () => { if (!done) { done = true; resolve(val); } });
+  });
+}
+function flash(node, good) {
+  node.classList.remove('pulse-good', 'pulse-bad');
+  void node.offsetWidth;
+  node.classList.add(good ? 'pulse-good' : 'pulse-bad');
+}
+
+/* =====================================================================
+   PUZZLE 1 — MEMORY SHRINE (Corsi-style spatial span / working memory)
+   Difficulty: sequence length, grid size, flash speed.
+   ===================================================================== */
+async function puzzleMemory(level, done, gen) {
+  const seqLen = Math.min(9, 2 + Math.ceil(level / 2) + (level > 6 ? 1 : 0));
+  const gsize = level < 4 ? 3 : 4;
+  const flashMs = Math.max(320, 700 - level * 35);
+  const rounds = 5;
+  let correct = 0;
+
+  for (let r = 0; r < rounds; r++) {
+    if (!live(gen)) return;
+    stage.innerHTML = '';
+    stage.appendChild(el('div', 'statline', 'Round ' + (r + 1) + ' of ' + rounds + ' — watch the lights, then repeat them.'));
+    const grid = el('div', 'corsi');
+    grid.style.gridTemplateColumns = 'repeat(' + gsize + ', 1fr)';
+    const cells = [];
+    for (let i = 0; i < gsize * gsize; i++) { const c = el('div', 'cell'); cells.push(c); grid.appendChild(c); }
+    stage.appendChild(grid);
+
+    const seq = [];
+    while (seq.length < seqLen) {
+      const n = Math.floor(Math.random() * cells.length);
+      if (seq[seq.length - 1] !== n) seq.push(n);
+    }
+    await sleep(700);
+    for (const n of seq) {
+      cells[n].classList.add('lit'); await sleep(flashMs);
+      cells[n].classList.remove('lit'); await sleep(160);
+    }
+    const ok = await new Promise(resolve => {
+      let idx = 0;
+      cells.forEach((c, i) => c.onclick = () => {
+        if (i === seq[idx]) {
+          c.classList.add('good'); setTimeout(() => c.classList.remove('good'), 220);
+          if (++idx === seq.length) resolve(true);
+        } else { c.classList.add('bad'); setTimeout(() => resolve(false), 450); }
+      });
+    });
+    if (ok) correct++;
+    await sleep(450);
+  }
+  done({ correct, total: rounds });
+}
+
+/* =====================================================================
+   PUZZLE 2 — FOCUS SHRINE (Stroop / inhibitory control)
+   Difficulty: time pressure, share of incongruent trials.
+   ===================================================================== */
+const STROOP = [
+  ['RED', '#f2785a'], ['BLUE', '#5aa9f2'], ['GREEN', '#54d97c'], ['YELLOW', '#f2c94c'],
+];
+async function puzzleFocus(level, done, gen) {
+  const trials = 12;
+  const ms = Math.max(1000, 2600 - level * 160);
+  const incongruentP = Math.min(0.85, 0.4 + level * 0.06);
+  let correct = 0;
+
+  for (let t = 0; t < trials; t++) {
+    if (!live(gen)) return;
+    stage.innerHTML = '';
+    stage.appendChild(el('div', 'statline', (t + 1) + ' / ' + trials + ' — tap the INK color, not the word'));
+    const wordIx = Math.floor(Math.random() * 4);
+    let inkIx = wordIx;
+    if (Math.random() < incongruentP) while (inkIx === wordIx) inkIx = Math.floor(Math.random() * 4);
+    const w = el('div', 'bigword', STROOP[wordIx][0]);
+    w.style.color = STROOP[inkIx][1];
+    stage.appendChild(w);
+    const row = el('div', 'choices');
+    const buttons = [];
+    STROOP.forEach(([name, hex], i) => {
+      const b = el('button', 'choice', name);
+      b.style.borderColor = hex; b.style.color = hex;
+      row.appendChild(b); buttons.push([b, i]);
+    });
+    stage.appendChild(row);
+    const ans = await timedChoice(buttons, ms);
+    const ok = ans === inkIx;
+    if (ok) correct++;
+    flash(w, ok);
+    await sleep(320);
+  }
+  done({ correct, total: trials });
+}
+
+/* =====================================================================
+   PUZZLE 3 — SHIFT SHRINE (task switching / cognitive flexibility)
+   Difficulty: switch rate, time pressure.
+   ===================================================================== */
+function shapeSVG(shape, color, size, rot) {
+  size = size || 64; rot = rot || 0;
+  const c = size / 2, r = size * 0.34;
+  let body;
+  if (shape === 'circle') body = '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" fill="' + color + '"/>';
+  else if (shape === 'square') body = '<rect x="' + (c - r) + '" y="' + (c - r) + '" width="' + (2 * r) + '" height="' + (2 * r) + '" rx="6" fill="' + color + '"/>';
+  else if (shape === 'diamond') body = '<rect x="' + (c - r * 0.8) + '" y="' + (c - r * 0.8) + '" width="' + (1.6 * r) + '" height="' + (1.6 * r) + '" rx="4" fill="' + color + '" transform="rotate(45 ' + c + ' ' + c + ')"/>';
+  else body = '<polygon points="' + c + ',' + (c - r) + ' ' + (c + r) + ',' + (c + r) + ' ' + (c - r) + ',' + (c + r) + '" fill="' + color + '"/>'; // triangle
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+         '<g transform="rotate(' + rot + ' ' + c + ' ' + c + ')">' + body + '</g></svg>';
+}
+async function puzzleShift(level, done, gen) {
+  const trials = 14;
+  const ms = Math.max(1100, 3000 - level * 180);
+  const switchP = Math.min(0.7, 0.2 + level * 0.06);
+  const COLORS = [['BLUE', '#5aa9f2'], ['ORANGE', '#f2785a']];
+  const SHAPES = ['circle', 'square'];
+  let rule = rand(['SHAPE', 'COLOR']);
+  let correct = 0;
+
+  for (let t = 0; t < trials; t++) {
+    if (!live(gen)) return;
+    if (t > 0 && Math.random() < switchP) rule = rule === 'SHAPE' ? 'COLOR' : 'SHAPE';
+    const shapeIx = Math.floor(Math.random() * 2);
+    const colorIx = Math.floor(Math.random() * 2);
+    stage.innerHTML = '';
+    stage.appendChild(el('div', 'statline', (t + 1) + ' / ' + trials + ' — answer for the rule shown'));
+    stage.appendChild(el('div', 'rulebanner', 'RULE: ' + rule));
+    const holder = el('div');
+    holder.innerHTML = shapeSVG(SHAPES[shapeIx], COLORS[colorIx][1], 96);
+    stage.appendChild(holder);
+    const row = el('div', 'choices');
+    const buttons = [];
+    if (rule === 'SHAPE') {
+      SHAPES.forEach((s, i) => {
+        const b = el('button', 'choice');
+        b.innerHTML = shapeSVG(s, '#9fc7a8', 40);
+        row.appendChild(b); buttons.push([b, i]);
+      });
+    } else {
+      COLORS.forEach(([name, hex], i) => {
+        const b = el('button', 'choice', name);
+        b.style.borderColor = hex; b.style.color = hex;
+        row.appendChild(b); buttons.push([b, i]);
+      });
+    }
+    stage.appendChild(row);
+    const ans = await timedChoice(buttons, ms);
+    const want = rule === 'SHAPE' ? shapeIx : colorIx;
+    const ok = ans === want;
+    if (ok) correct++;
+    flash(holder, ok);
+    await sleep(320);
+  }
+  done({ correct, total: trials });
+}
+
+/* =====================================================================
+   PUZZLE 4 — PATTERN SHRINE (sequence induction / fluid reasoning)
+   Difficulty: number of simultaneous rules, distractor similarity.
+   ===================================================================== */
+const P_COLORS = ['#5aa9f2', '#f2785a', '#54d97c', '#f2c94c'];
+const P_SHAPES = ['circle', 'square', 'diamond', 'triangle'];
+function applyRules(item, rules) {
+  const n = { shape: item.shape, color: item.color, rot: item.rot, count: item.count };
+  for (const r of rules) {
+    if (r === 'color') n.color = (n.color + 1) % P_COLORS.length;
+    else if (r === 'shape') n.shape = (n.shape + 1) % P_SHAPES.length;
+    else if (r === 'rot') n.rot = (n.rot + 90) % 360;
+    else if (r === 'count') n.count = 1 + (n.count % 4);
+  }
+  return n;
+}
+function itemSVG(it, size) {
+  const s = size || 64;
+  if (it.count === 1) return shapeSVG(P_SHAPES[it.shape], P_COLORS[it.color], s, it.rot);
+  let out = '<div style="display:grid;grid-template-columns:repeat(2,1fr);width:' + s + 'px;height:' + s + 'px;">';
+  for (let i = 0; i < it.count; i++) out += shapeSVG(P_SHAPES[it.shape], P_COLORS[it.color], s / 2 - 2, it.rot);
+  return out + '</div>';
+}
+const itemKey = it => it.shape + '|' + it.color + '|' + it.rot + '|' + it.count;
+async function puzzlePattern(level, done, gen) {
+  const questions = 6;
+  const nRules = Math.min(3, 1 + Math.floor((level - 1) / 3));
+  let correct = 0;
+
+  for (let q = 0; q < questions; q++) {
+    if (!live(gen)) return;
+    const pool = ['color', 'shape', 'rot', 'count'];
+    const rules = shuffle(pool.slice()).slice(0, nRules);
+    if (rules.includes('rot') && rules.includes('shape')) rules[rules.indexOf('shape')] = 'color';
+    const uniq = [...new Set(rules)];
+    let item = { shape: Math.floor(Math.random() * 4), color: Math.floor(Math.random() * 4),
+                 rot: uniq.includes('rot') ? 0 : 0, count: uniq.includes('count') ? 1 + Math.floor(Math.random() * 2) : 1 };
+    if (uniq.includes('rot')) item.shape = 3; // triangle: rotation is visible
+    const seq = [item];
+    for (let i = 0; i < 4; i++) seq.push(applyRules(seq[i], uniq));
+    const answer = seq[4];
+
+    // distractors: mutate one attribute of the true answer
+    const opts = [answer];
+    let guard = 0;
+    while (opts.length < 4 && guard++ < 200) {
+      const d = { ...answer };
+      const m = rand(['color', 'shape', 'rot', 'count']);
+      if (m === 'color') d.color = (d.color + 1 + Math.floor(Math.random() * 3)) % 4;
+      else if (m === 'shape') d.shape = (d.shape + 1 + Math.floor(Math.random() * 3)) % 4;
+      else if (m === 'rot') d.rot = (d.rot + 90 + 90 * Math.floor(Math.random() * 3)) % 360;
+      else d.count = 1 + ((d.count + Math.floor(Math.random() * 3)) % 4);
+      if (!opts.some(o => itemKey(o) === itemKey(d))) opts.push(d);
+    }
+    shuffle(opts);
+
+    stage.innerHTML = '';
+    stage.appendChild(el('div', 'statline', (q + 1) + ' / ' + questions + ' — what comes next?'));
+    const row = el('div', 'seqrow');
+    for (let i = 0; i < 4; i++) {
+      const s = el('div', 'slot'); s.innerHTML = itemSVG(seq[i], 56); row.appendChild(s);
+    }
+    const qm = el('div', 'slot q', '?'); row.appendChild(qm);
+    stage.appendChild(row);
+    const grid = el('div', 'optgrid');
+    const ok = await new Promise(resolve => {
+      opts.forEach(o => {
+        const s = el('div', 'slot'); s.innerHTML = itemSVG(o, 72);
+        s.onclick = () => { flash(s, itemKey(o) === itemKey(answer)); setTimeout(() => resolve(itemKey(o) === itemKey(answer)), 380); };
+        grid.appendChild(s);
+      });
+      stage.appendChild(grid);
+    });
+    if (ok) correct++;
+  }
+  done({ correct, total: questions });
+}
+
+const PUZZLES = { memory: puzzleMemory, focus: puzzleFocus, shift: puzzleShift, pattern: puzzlePattern };
+
+/* =====================================================================
+   RENDERING — overworld
+   ===================================================================== */
+function drawTile(x, y, ch, t) {
+  const px = x * TS, py = y * TS;
+  // base grass
+  ctx.fillStyle = ((x + y) % 2 === 0) ? '#2e5b38' : '#2a5433';
+  ctx.fillRect(px, py, TS, TS);
+  if (ch === 'p') {
+    ctx.fillStyle = '#b59a6a'; ctx.fillRect(px, py, TS, TS);
+    ctx.fillStyle = 'rgba(0,0,0,.06)'; ctx.fillRect(px + 3, py + 3, TS - 6, TS - 6);
+  } else if (ch === 'w') {
+    ctx.fillStyle = '#2a6f8f'; ctx.fillRect(px, py, TS, TS);
+    ctx.fillStyle = 'rgba(255,255,255,.18)';
+    const ph = Math.sin(t / 600 + x * 1.7 + y * 2.3) * 2;
+    ctx.fillRect(px + 6, py + TS / 2 + ph, TS - 12, 2);
+  } else if (ch === 't') {
+    ctx.fillStyle = '#5a4630'; ctx.fillRect(px + TS * 0.4, py + TS * 0.55, TS * 0.2, TS * 0.35);
+    ctx.fillStyle = '#1e4427';
+    ctx.beginPath(); ctx.arc(px + TS / 2, py + TS * 0.38, TS * 0.34, 0, 7); ctx.fill();
+    ctx.fillStyle = '#296136';
+    ctx.beginPath(); ctx.arc(px + TS * 0.38, py + TS * 0.3, TS * 0.16, 0, 7); ctx.fill();
+  } else if (ch === 'f') {
+    const cols = ['#f2c94c', '#f278c0', '#e7f5ea'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = cols[(x * 3 + y + i) % 3];
+      ctx.fillRect(px + 8 + ((x + i * 7) % (TS - 18)), py + 8 + ((y * 5 + i * 11) % (TS - 18)), 4, 4);
+    }
+  } else if (ch === 's') {
+    ctx.fillStyle = '#5a4630'; ctx.fillRect(px + TS * 0.45, py + TS * 0.45, TS * 0.1, TS * 0.4);
+    ctx.fillStyle = '#8a6f4d'; ctx.fillRect(px + TS * 0.2, py + TS * 0.2, TS * 0.6, TS * 0.3);
+  } else if (TILE_SKILL[ch]) {
+    drawShrine(px, py, TILE_SKILL[ch], t);
+  } else if (ch === 'G') {
+    drawSage(px, py, t);
+  }
+}
+function drawShrine(px, py, skill, t) {
+  const v = vitality(skill);
+  const hue = SKILLS[skill].hue;
+  // aura: stronger glow when vitality is LOW (calls you back — spaced repetition cue)
+  const need = 1 - v;
+  ctx.save();
+  ctx.globalAlpha = 0.25 + 0.3 * need * (0.6 + 0.4 * Math.sin(t / 400));
+  ctx.fillStyle = hue;
+  ctx.beginPath(); ctx.arc(px + TS / 2, py + TS / 2, TS * 0.62, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#3d4754';
+  ctx.fillRect(px + TS * 0.18, py + TS * 0.3, TS * 0.64, TS * 0.55);
+  ctx.fillStyle = '#535f6e';
+  ctx.beginPath();
+  ctx.moveTo(px + TS * 0.1, py + TS * 0.32);
+  ctx.lineTo(px + TS / 2, py + TS * 0.06);
+  ctx.lineTo(px + TS * 0.9, py + TS * 0.32);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = hue;
+  ctx.beginPath(); ctx.arc(px + TS / 2, py + TS * 0.56, TS * 0.13, 0, 7); ctx.fill();
+}
+function drawSage(px, py, t) {
+  const bob = Math.sin(t / 500) * 1.5;
+  ctx.fillStyle = '#cfe8d4';
+  ctx.fillRect(px + TS * 0.3, py + TS * 0.34 + bob, TS * 0.4, TS * 0.5);
+  ctx.fillStyle = '#e8d3b0';
+  ctx.beginPath(); ctx.arc(px + TS / 2, py + TS * 0.28 + bob, TS * 0.16, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e7f5ea'; // beard
+  ctx.fillRect(px + TS * 0.42, py + TS * 0.34 + bob, TS * 0.16, TS * 0.14);
+}
+function drawPlayer(t) {
+  const px = player.px * TS, py = player.py * TS;
+  const step = player.moving ? Math.sin(player.t * Math.PI * 2) * 1.5 : 0;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath(); ctx.ellipse(px + TS / 2, py + TS * 0.86, TS * 0.24, TS * 0.08, 0, 0, 7); ctx.fill();
+  // body
+  ctx.fillStyle = '#d94f4f';
+  ctx.fillRect(px + TS * 0.32, py + TS * 0.42 + step, TS * 0.36, TS * 0.34);
+  // head
+  ctx.fillStyle = '#e8c8a0';
+  ctx.beginPath(); ctx.arc(px + TS / 2, py + TS * 0.32 + step, TS * 0.15, 0, 7); ctx.fill();
+  // cap
+  ctx.fillStyle = '#2a6f8f';
+  ctx.beginPath(); ctx.arc(px + TS / 2, py + TS * 0.28 + step, TS * 0.15, Math.PI, 0); ctx.fill();
+  // eyes by facing
+  ctx.fillStyle = '#1a1a1a';
+  const cy = py + TS * 0.33 + step;
+  if (player.facing === 'down')  { ctx.fillRect(px + TS * 0.43, cy, 3, 3); ctx.fillRect(px + TS * 0.54, cy, 3, 3); }
+  if (player.facing === 'left')  ctx.fillRect(px + TS * 0.38, cy, 3, 3);
+  if (player.facing === 'right') ctx.fillRect(px + TS * 0.58, cy, 3, 3);
+  // legs
+  ctx.fillStyle = '#3d4754';
+  ctx.fillRect(px + TS * 0.34, py + TS * 0.72 - step, TS * 0.12, TS * 0.14);
+  ctx.fillRect(px + TS * 0.54, py + TS * 0.72 + step, TS * 0.12, TS * 0.14);
+}
+
+/* ---------------- HUD ---------------- */
+const hudLevel = document.getElementById('hud-level');
+const hudHint = document.getElementById('hud-hint');
+const xpFill = document.getElementById('xpfill');
+function updateHUD() {
+  hudLevel.textContent = 'Lv ' + trainerLevel();
+  xpFill.style.width = Math.round(xpIntoLevel() * 100) + '%';
+  const weak = weakestSkill();
+  hudHint.textContent = vitality(weak) < 0.5 ? SKILLS[weak].name + ' calls' : 'Grove is thriving';
+}
+updateHUD();
+setInterval(updateHUD, 30000);
+
+/* ---------------- Main loop ---------------- */
+const MOVE_SPEED = 5.2; // tiles per second
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (mode === 'world') {
+    if (player.moving) {
+      player.t += dt * MOVE_SPEED;
+      if (player.t >= 1) {
+        player.x += player.mx; player.y += player.my;
+        player.px = player.x; player.py = player.y;
+        player.moving = false;
+        if (held) tryStep(held); // chain steps while held — Pokémon glide
+      } else {
+        player.px = player.x + player.mx * player.t;
+        player.py = player.y + player.my * player.t;
+      }
+    } else if (held) {
+      tryStep(held);
+    }
+  }
+
+  // camera
+  let camX = player.px * TS + TS / 2 - VW / 2;
+  let camY = player.py * TS + TS / 2 - VH / 2;
+  camX = Math.max(0, Math.min(MW * TS - VW, camX));
+  camY = Math.max(0, Math.min(MH * TS - VH, camY));
+  if (MW * TS < VW) camX = (MW * TS - VW) / 2;
+  if (MH * TS < VH) camY = (MH * TS - VH) / 2;
+
+  ctx.fillStyle = '#0d1b12';
+  ctx.fillRect(0, 0, VW, VH);
+  ctx.save();
+  ctx.translate(-camX, -camY);
+  const x0 = Math.max(0, Math.floor(camX / TS) - 1), x1 = Math.min(MW - 1, Math.ceil((camX + VW) / TS) + 1);
+  const y0 = Math.max(0, Math.floor(camY / TS) - 1), y1 = Math.min(MH - 1, Math.ceil((camY + VH) / TS) + 1);
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++)
+      drawTile(x, y, tileAt(x, y), now);
+  drawPlayer(now);
+  ctx.restore();
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* First visit: a gentle nudge toward the Sage. */
+if (!save.intro) {
+  setTimeout(() => startDialog('???', [
+    'A hush falls over the grove as you arrive...',
+    'Someone is waiting at the center, where the paths cross. Walk to him and press A.',
+  ]), 600);
+}
+</script>
+</body>
+</html>
