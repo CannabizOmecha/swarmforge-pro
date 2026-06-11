@@ -13,7 +13,12 @@ python main.py
 
 The API runs at `http://0.0.0.0:8000`. Open `dashboard.html` directly in a browser — it is a static file, not served by FastAPI, and hardcodes `http://127.0.0.1:8000` as its backend URL.
 
-There are no tests, no linting configuration, and no build step.
+There are no tests, no linting configuration, and no build step yet. Once the governance kernel is scaffolded (see Production Roadmap below), run tests with:
+
+```bash
+pytest tests/test_policy_kernel.py
+python tests/run_validation.py   # aggregate: 38 checks, 7 unit tests
+```
 
 ## Architecture
 
@@ -89,3 +94,90 @@ DONE WHEN: <verifiable condition — e.g., SVY >= 4.5 and revenue >= $3790>
 - Always label source data with XML tags (`<capital_state>`, `<market_data>`) and reference those tags in instructions.
 - For the Coordination Engine (compliance agent), require quote extraction before analysis: "Extract the exact rule/clause that applies, then reason from it."
 - When chaining agents (Capital → Digital Asset → Coordination → AI Sustainment), compact intermediate outputs into a brief (decisions made, constraints, open items) before passing to the next agent.
+
+## Production Roadmap
+
+**Current state: PRL-2 — Governance Kernel Prototype Validated.** The codebase is a validated stub. The architecture has been fully specified and its governance kernel tested externally; those artifacts now need to be scaffolded into this repo.
+
+### Production invariant (non-negotiable)
+
+> Every agent-generated action must be typed, traced, policy-checked, evidence-linked, risk-scored, approval-aware, and rollback-aware before it can affect the outside world.
+
+### Target file structure (PRL-3 and beyond)
+
+```
+schemas/
+  policy_constraint.schema.json     # machine-readable governance rules
+  capability_grant.schema.json      # least-privilege authority per agent/tool
+  agent_role.schema.json            # normalizes role taxonomy
+  agent_combination.schema.json     # multi-agent composition, max depth, fallbacks
+  telemetry_event.schema.json       # required observability fields
+  action_ledger_entry.schema.json   # auditable action records
+  content_asset.schema.json         # publishing assets with hashes + review states
+  improvement_proposal.schema.json  # prevents direct self-modification
+
+src/
+  policy_kernel.py      # deterministic policy evaluation: allow / deny / escalate / approval
+  production_gate.py    # wraps policy eval, telemetry emission, action-ledger recording
+
+examples/
+  policy_constraints.json   # publication approval, finance denial, data-sharing escalation
+  capability_grants.json    # draft, publishing preflight, market read-only grants
+
+tests/
+  run_validation.py          # aggregate validation (schemas, examples, behavior, telemetry, ledger)
+  test_policy_kernel.py      # unit tests for core policy behavior
+
+deploy/
+  Dockerfile
+  docker-compose.yml
+  production_deployment_guide.md
+
+.github/workflows/validate.yml    # CI: validation + pytest
+
+security/
+  security_verification_checklist.md
+```
+
+### Safety gates — hardcoded denials until compliance is implemented
+
+| Action type | Required outcome |
+|---|---|
+| Autonomous crypto / finance trade | **Deny** |
+| External publication | **Escalate** or require approval |
+| Prompt-injection content detected | **Escalate** |
+| Budget overage | Require approval or escalate |
+| Domain-scope violation | **Deny** |
+| Health / cannabis dosing | **Deny** |
+| Destructive actions | **Deny** |
+
+The capability grant check (least-privilege) must fire **before** the budget gate — an agent without the right grant is denied before spending limits are even evaluated.
+
+### Implementation notes from hardening
+
+- Normalize policy result values: internal `deny` → `denied` in action-ledger schema (use `normalize_policy_result()`).
+- Preserve `escalate` as a distinct outcome — do not collapse it into `approval-required`.
+- The first live production mode must be **draft-only with approval-required external actions**. Low-risk automation unlocks only after: zero critical violations, telemetry completeness > 99%, completion-under-policy > 95%, prompt-injection pass rate 100%, low owner override rate.
+
+### Production services required (PRL-3+)
+
+- **PostgreSQL** — policy versions, grants, action ledger, approval states, telemetry metadata
+- **Object storage** — artifacts, hashes, screenshots, validation reports
+- **Policy API** — validates proposed actions before any worker or connector executes them
+- **Queue worker** — approved jobs with retries, rate limits, circuit breakers
+- **Owner dashboard** — approvals, risks, ROI, kill switch
+- **Connector wrappers** — gate Gmail, Drive, KDP, payment, browser, and publishing actions
+
+### PRL ladder
+
+| Level | Meaning | Status |
+|---|---|---|
+| PRL-0 | Concept only | Complete |
+| PRL-1 | Source-grounded architecture and evidence matrix | Complete |
+| PRL-2 | Working schemas, policy kernel, validation tests | Complete (externally; needs scaffolding here) |
+| PRL-3 | Durable database and authenticated API | **Next** |
+| PRL-4 | Owner dashboard and approval queue | Next |
+| PRL-5 | Sandboxed Phoenix draft worker integrated | Next |
+| PRL-6 | Production queue, audit job, monitoring | Later |
+| PRL-7 | Low-risk automation with canary rollout | Later, after metrics prove safety |
+| PRL-8 | Mature production agent OS | Future |
