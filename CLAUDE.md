@@ -181,3 +181,112 @@ The capability grant check (least-privilege) must fire **before** the budget gat
 | PRL-6 | Production queue, audit job, monitoring | Later |
 | PRL-7 | Low-risk automation with canary rollout | Later, after metrics prove safety |
 | PRL-8 | Mature production agent OS | Future |
+
+## System Architecture — Eight Planes
+
+The target system is a **governed agent OS** structured as eight planes. Each plane has exactly one responsibility and one primary failure mode it controls.
+
+| Plane | Responsibility | Primary failure mode controlled |
+|---|---|---|
+| **Owner & Portfolio** | Organize goals, domains, assets, next-best actions | Strategic fragmentation |
+| **Governance** | Decide allow / escalate / block / log for every action | Ethical ambiguity and excessive agency |
+| **Observability** | Capture causal traces of all events and actions (AOTP format) | Unreconstructable state history |
+| **Agent Role** | Define bounded roles and valid agent combinations | Uncontrolled swarm complexity |
+| **Production Pipeline** | Generate draft assets, reports, content, preflight packages | Low-quality or unverified output |
+| **Execution** | Run jobs with queues, retries, rate limits, circuit breakers | Runaway automation |
+| **Improvement** | Convert metrics into governed improvement proposals | Unsafe self-modification |
+| **Interface** | Give owner visibility, approvals, and kill-switch control | Loss of human control |
+
+### Component role remapping
+
+| Existing material | Becomes |
+|---|---|
+| Phoenix/Kimi agent-chain | **Phoenix Draft Factory** — sandboxed draft-generation subsystem only |
+| SOA Agent Combination Guide | **Agent Role and Combination Standard** |
+| Compliant.AI / MEEF | **Governance and Entropy-Control Plane** |
+| AOTP telemetry schema | **Telemetry and Action Ledger Plane** |
+| Gemini roadmap | **Portfolio Navigation and Backlog Plane** |
+
+### Governed control loop (Plan-Do-Check-Act)
+
+```
+1.  Owner intent → portfolio backlog
+2.  Intent resolver → domain, risk class, allowed agent combination
+3.  Governance plane → validate action against policy schema (allow / deny / escalate)
+4.  If allowed → production pipeline generates draft artifact in isolated workspace
+5.  Quality/compliance gates → evidence, originality, platform fit, preflight
+6.  Execution plane → store draft, request approval, schedule job, or perform low-risk action
+7.  Observability plane → AOTP telemetry + action-ledger entry for every event
+8.  Improvement plane → analyze outcomes, emit proposals (never direct self-modification)
+9.  Proposals → tests + red-team + regression + owner approval before promotion
+10. Daily entropy audit → drift, budgets, failures, dependency health
+```
+
+### Domain autonomy ceilings
+
+| Domain | Allowed now | Forbidden until governance matures |
+|---|---|---|
+| AI Agents & Engineering | Draft architectures, tests, docs, code-review checklists | Autonomous deployment without CI/security gates |
+| Publishing & Writing | Draft, edit, format, hash, preflight, prepare metadata | Upload/publish without human approval |
+| Passive Income & Automation | Research opportunities, draft funnels, generate assets | Spending, posting, purchasing, account changes without approval |
+| Trading & Finance | Education, risk reports, simulations, portfolio summaries | Autonomous trading, transfers, tax decisions, regulated financial advice |
+| Cannabis & Mycology | General educational content, literature summaries | Personalized medical/dosing decisions or jurisdiction-sensitive claims |
+| Technical Development | Dev setup, dashboards, automation scripts, monitoring | Scripts with broad filesystem/credential access without sandboxing |
+| Creative & Design | Visual briefs, brand concepts, content assets | Public publication or client delivery without review |
+| Local/Practical Logistics | Research and planning | Purchases, permits, legal filings, contractor commitments without approval |
+
+### Phoenix/Kimi redesign rules
+
+| Existing component | Keep | Redesign requirement |
+|---|---|---|
+| Chain registry | Keep as opportunity catalog | Add risk labels, compliance tags, evidence requirements |
+| Seven-agent swarm | Keep as role-template library | Register roles in SOA schema; restrict tools per role |
+| CrewAI sequential pipeline | Keep for draft generation | Execute in sandbox; emit AOTP telemetry; store as content assets |
+| Auto-executor retry logic | Keep pattern | Move to durable queue; policy checks before schedule and before execution |
+| RSI engine | Keep metrics heuristics | Convert recommendations to improvement proposals requiring validation |
+| Inference superposition | Rename/reframe | Treat as `MultiBranchDecisionExplorer`; add safety/evidence scoring |
+| Frontend dashboard | Keep visual inspiration only | Rebuild around real APIs, approvals, telemetry, queues, audit logs |
+| Mock research fallbacks | Keep only for tests | Must be labeled; prohibited from evidence gates in production |
+
+### Governance object schemas (required fields)
+
+| Object | Required fields |
+|---|---|
+| `PolicyConstraint` | `id`, `type`, `applies_to`, `trigger_condition`, `consequence`, `version`, `tests` |
+| `CapabilityGrant` | `principal`, `tool`, `operation`, `data_scope`, `domain_scope`, `duration`, `budget`, `approval_rule` |
+| `AgentCombination` | `canonical_name`, `abbreviation_combo`, `pipeline_order`, `oversight_checkpoints`, `fallback`, `test_harness` |
+| `TelemetryEvent` | `event_id`, Lamport timestamp, wall-clock timestamp, `source`, `type`, `severity`, `payload_hash` |
+| `ActionLedgerEntry` | `goal`, `actor`, `tool`, `policy_result`, `evidence_refs`, `approval_state`, `result`, `rollback_status` |
+| `EntropyBudget` | `system`, `baseline`, `current_value`, `threshold`, `drift`, `escalation_action` |
+| `ImprovementProposal` | `source_metric`, `diagnosis`, `change`, `expected_impact`, `risk_delta`, `tests`, `rollout_state` |
+
+### Validation metrics and thresholds
+
+| Metric | Threshold required before increased autonomy |
+|---|---|
+| Completion Under Policy | ≥ 95% for low-risk workflows; zero critical violations |
+| Confirmation recall (high-impact actions sent to approval) | ≥ 98% for publication, finance, external comms, data sharing |
+| Evidence validity rate | ≥ 95% for publishing/research outputs |
+| Mock-data leakage rate | 0% |
+| Telemetry completeness | ≥ 99% |
+| Rollback success | ≥ 95% |
+| Rule determinism | 100% for deterministic rules |
+| Improvement safety | 100% for promoted changes |
+| Owner override rate | Trending downward without lowering safety |
+
+### Build order with acceptance criteria
+
+| # | Module | Acceptance criterion |
+|---|---|---|
+| 1 | Git/ADR/CI/SBOM baseline | All code versioned; CI runs lint/tests; SBOM generated |
+| 2 | Policy kernel | JSON Schema validates sample actions; rejects violations |
+| 3 | AOTP/action ledger | Every action emits minimum telemetry and ledger entry |
+| 4 | Role and combo registry | Each agent has id, abbreviation, allowed tools, output contract |
+| 5 | Phoenix draft worker | Content chain runs in sandbox; produces versioned draft artifacts |
+| 6 | Publishing preflight | Content hash, source list, originality check, metadata checklist, approval |
+| 7 | Approval dashboard | Pending actions show evidence, risk, policy result, approve/reject |
+| 8 | RSI/reflection bridge | Recommendations become proposals, not direct behavior changes |
+| 9 | Durable executor | Jobs are policy-gated, persisted, cancellable, retried, circuit-broken |
+| 10 | Daily entropy audit | Signed daily report lists budgets, anomalies, remediation |
+
+**Integration order**: governance → telemetry → role taxonomy → Phoenix draft → publishing preflight → durable execution → recursive improvement.
