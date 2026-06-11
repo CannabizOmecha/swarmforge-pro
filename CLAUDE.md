@@ -39,6 +39,34 @@ pytest tests/test_policy_kernel.py
 python tests/run_validation.py   # aggregate: 38 checks, 7 unit tests
 ```
 
+## Content Assets
+
+### The Unanimous Revelation
+
+**`The_Unanimous_Revelation.docx`** — Complete, publishable manuscript by C.A. Cassinelli.
+
+- **Full title**: *The Unanimous Revelation: Overlapping Ideations from the World's Theological Texts — A Perennial Synthesis of Divine Truth*
+- **Status**: Second revision, scholarly colophon. Marked "Complete and Publishable. Single Volume."
+- **Role in the system**: (1) Inaugural publishing asset for the Production Pipeline Plane / Digital Asset Engine — the first content to move through the publishing preflight, hash commitment, originality check, and approval flow. (2) Research-quality standard for future manuscripts (the "Unanimous Revelation research rubric", integration readiness 71.4, Pilot Behind Gates).
+
+**Scope** — Seven thematic chapters with primary citations from ≥ 5 independent canonical traditions each:
+
+| Chapter | Theme | Key corpora |
+|---|---|---|
+| 1 | Primordial Unity | Deut 6:4; Qur'ān 112; Bṛhad. Up. 1.4.10; Bhag. Gītā 7:7; Tao Te Ching 42; Mūl Mantar; Yasna 31 |
+| 2 | The Golden Rule | Lev 19:18; Matt 7:12; Bukhārī 13; Udāna-varga 5:18; Mahābh. 113.8; Analects 15:24; Dādistān 94:5 |
+| 3 | Inner Light / Soul | Gen 1:27; Luke 17:21; Qur'ān 15:29; Chānd. Up. 6.8.7 (tat tvam asi); Bhag. Gītā 15:7; Tathāgatagarbha Sūtra |
+| 4 | Suffering & Liberation | SN 56.11 (Four Noble Truths); Bhag. Gītā 2:62–63; Gen 3:17; Rom 6:23; Qur'ān 2:155; Tattvārtha 1:1 |
+| 5 | Virtue & Character | Micah 6:8; Qur'ān 16:90; Bhag. Gītā 16:1–3; Dhammapada 183; Analects 2:1; Tattvārtha 7:1 |
+| 6 | Love & Compassion | 1 John 4:7–8; Qur'ān 7:156; Bhag. Gītā 12:13–14; Karaṇīya Mettā Sutta; Analects 12:22; Tao Te Ching 67 |
+| 7 | Mystical Union | Gal 2:20; John 17:21; Qur'ān 24:35; al-Ḥallāj; Muṇḍ. Up. 3.2.9; Dhammapada 153–154; Tao Te Ching 16 |
+
+Scholarly apparatus includes: Appendix A (side-by-side verse compendium), Appendix B (translation and transliteration notes), a full bibliography (primary sources + secondary literature), and 7 endnotes addressing contested translation and comparative methodology.
+
+**Central thesis** (falsifiable claim): across foundational scriptural corpora of major world religions, a small set of recurring ideations can be documented with primary citations; the convergence is morphological, not doctrinal — the manuscript maps resonances without collapsing real doctrinal differences.
+
+**Publishing pipeline requirements** (from the domain autonomy matrix): draft, edit, format, hash, preflight, and prepare metadata are all permitted now; upload/publish requires human approval.
+
 ## Architecture
 
 This is a two-file full-stack MVP:
