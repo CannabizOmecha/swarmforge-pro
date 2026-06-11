@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running the App
 
-Install dependencies and start the backend:
+Install dependencies and start the FastAPI backend:
 
 ```bash
 pip install -r requirements.txt
@@ -12,6 +12,25 @@ python main.py
 ```
 
 The API runs at `http://0.0.0.0:8000`. Open `dashboard.html` directly in a browser — it is a static file, not served by FastAPI, and hardcodes `http://127.0.0.1:8000` as its backend URL.
+
+**EDISON-7 pipeline** (standalone, no server required):
+
+```bash
+# Demo run with built-in synthetic contig (no FASTA needed):
+python edison7_pipeline.py
+
+# With a real FASTA of non-coding contigs:
+python edison7_pipeline.py --fasta my_contigs.fasta --goal "Discover therapeutic targets"
+
+# Full options:
+python edison7_pipeline.py --help
+
+# With optional enrichment (set env vars first):
+ANTHROPIC_API_KEY=sk-... python edison7_pipeline.py --use-llm
+python edison7_pipeline.py --use-pubmed
+```
+
+Output goes to `./edison7_out/` — a `report_<run_id>.json` and an append-only `audit_<run_id>.jsonl` with SHA-256 chaining.
 
 There are no tests, no linting configuration, and no build step yet. Once the governance kernel is scaffolded (see Production Roadmap below), run tests with:
 
@@ -94,6 +113,45 @@ DONE WHEN: <verifiable condition — e.g., SVY >= 4.5 and revenue >= $3790>
 - Always label source data with XML tags (`<capital_state>`, `<market_data>`) and reference those tags in instructions.
 - For the Coordination Engine (compliance agent), require quote extraction before analysis: "Extract the exact rule/clause that applies, then reason from it."
 - When chaining agents (Capital → Digital Asset → Coordination → AI Sustainment), compact intermediate outputs into a brief (decisions made, constraints, open items) before passing to the next agent.
+
+## EDISON-7 Pipeline (`edison7_pipeline.py`)
+
+A single-file, standalone autonomous microprotein discovery pipeline. No external services are required to run end-to-end; optional enrichment is gated behind environment variables.
+
+**Dependencies**: `biopython>=1.83`, `numpy>=1.26`. Optional: `anthropic` SDK or `openai` SDK for LLM hypothesis generation.
+
+### Architecture (9 sections)
+
+| Section | What it does |
+|---|---|
+| Biophysics constants | Eisenberg (1984) hydrophobicity, Kyte-Doolittle GRAVY, pKa side chains, disorder residue sets |
+| smORF detection | `find_smorfs()` — scans both strands × 3 frames for M..*stop, length [min_aa, max_aa] aa |
+| Featurization | `featurize()` → 12 features: GRAVY, uH (hydrophobic moment), disorder, net charge, signal peptide hint, GC%, 3-mer Shannon entropy |
+| Relevance scoring | `biological_relevance_score()` — weighted linear combination → float in [0,1]; transparent weights, no trained model |
+| CEM | `cem_score()` — section-aware TF-IDF+cosine claim-evidence matching against a seed literature corpus |
+| External enrichment | `pubmed_search()` and `llm_hypothesis()` — optional, clearly gated behind env vars |
+| Audit log | `AuditLog` — append-only JSON-lines with SHA-256 chaining (GENESIS → each record) |
+| Entropy metric | `hypothesis_entropy()` — Shannon entropy of softmax over relevance scores; converges toward 0 as one candidate dominates |
+| Pipeline / CLI | `run_discovery()` orchestrates all stages; `_cli()` exposes all config via argparse |
+
+### Verifiability tiers
+
+| Tier | Meaning |
+|---|---|
+| T1 | Sequence exists, no analysis |
+| T2 | Passes length/start/stop and complexity floor (kmer entropy ≥ 1.0) |
+| T3 | Full biophysical featurization computed |
+| T4 | ≥1 evidence hit via CEM surrogate (relevance ≥ 0.35) |
+| T5 | LLM/PubMed/BLAST returned plausible analog (relevance ≥ 0.55) |
+| T6 | Primer + expression design produced for validation (relevance ≥ 0.75) |
+
+### Key design constraints
+
+- The CEM stage is a **TF-IDF+cosine surrogate** — the `cem_score()` function boundary is where a real SciClaimHunt CEM/GCEM model slots in as a drop-in replacement.
+- T4+ candidates must be re-scored with SignalP6, IUPred3, and AlphaFold2 before any wet-lab claim.
+- No autonomy-level claims are made: this is L3-equivalent (consultant) — it runs the loop, the researcher decides.
+- The `LOGLEVEL` is configurable via `EDISON7_LOGLEVEL` env var (default: `INFO`).
+- The built-in demo uses magainin-like + LL-37-like seed peptides embedded in random flanking sequence — always produces real candidates without any input.
 
 ## Production Roadmap
 
