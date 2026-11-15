@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from .engine import canonical_hash, execute_synthetic_run
 from .experts import EXPERTS, route
 from .models import TestRequest
-from .policy import AuthorizationError, SCOPES
+from .policy import SCOPES, AuthorizationError
 from .store import Store
 
 app = FastAPI(
