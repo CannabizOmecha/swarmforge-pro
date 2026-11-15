@@ -1,37 +1,46 @@
 from fastapi.testclient import TestClient
 
-import aegis.api as api
+from aegis import api
 from aegis.store import Store
 
 
-def test_health_and_agents():
-    client = TestClient(api.app)
-    assert client.get("/health").json()["status"] == "ok"
-    names = {agent["name"] for agent in client.get("/agents").json()["agents"]}
-    assert {"governance", "security_validator", "evidence"} <= names
-
-
-def test_scope_rejection_and_run_persistence(tmp_path, monkeypatch):
+def client_for(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "store", Store(str(tmp_path / "test.sqlite3")))
-    client = TestClient(api.app)
+    return TestClient(api.app)
 
-    denied = client.post("/runs", json={"scope_id": "production", "batch_size": 5, "seed": 1})
-    assert denied.status_code == 403
 
-    response = client.post("/runs", json={"scope_id": "local-synthetic", "batch_size": 10, "seed": 11})
+def test_health_scope_and_agent_routing(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    assert client.get("/health").json()["network_testing"] is False
+    scopes = client.get("/scope").json()["scopes"]
+    assert len(scopes) == 1
+    assert scopes[0]["scope_id"] == "local-synthetic"
+    assert client.get("/routing/run").json()["execution_mode"] == "deterministic"
+    assert client.get("/routing/not-a-task").status_code == 404
+
+
+def test_run_persistence_and_evidence_verification(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    response = client.post("/runs", json={"scope_id": "local-synthetic", "batch_size": 10, "seed": 7})
     assert response.status_code == 200
     payload = response.json()
     run_id = payload["run"]["run_id"]
-    assert payload["run"]["status"] == "completed"
-    assert payload["run"]["validated_count"] == 1
-    assert len(payload["evidence"]) == 1
+    assert client.get(f"/runs/{run_id}").status_code == 200
+    assert len(payload["findings"]) == 1
+    evidence_id = payload["evidence"][0]["evidence_id"]
+    assert client.get(f"/evidence/{evidence_id}").status_code == 200
+    verification = client.get(f"/evidence/{evidence_id}/verify").json()
+    assert verification["valid"] is True
+    assert verification["algorithm"] == "sha256"
+    assert client.get("/metrics").json()["validated_findings"] == 1
 
-    fetched = client.get(f"/runs/{run_id}")
-    assert fetched.status_code == 200
-    assert fetched.json()["run_id"] == run_id
-    assert client.get("/metrics").json()["runs"] == 1
 
-
-def test_missing_run_returns_404():
-    client = TestClient(api.app)
-    assert client.get("/runs/not-a-run").status_code == 404
+def test_unknown_scope_and_invalid_request_are_rejected(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    denied = client.post("/runs", json={"scope_id": "production", "batch_size": 5, "seed": 1})
+    assert denied.status_code == 403
+    malformed = client.post("/runs", json={"scope_id": "local-synthetic", "batch_size": 999, "seed": 1})
+    assert malformed.status_code == 422
+    unknown = client.get("/runs/not-found")
+    assert unknown.status_code == 404
+    assert client.get("/evidence/not-found/verify").status_code == 404

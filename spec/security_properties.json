@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.local/schemas/security-properties.json",
+  "title": "AEGIS security property registry",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "category", "statement", "severity", "validation_rule", "status"],
+    "properties": {
+      "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{2,63}$"},
+      "category": {"type": "string", "enum": ["authorization", "privacy", "integrity", "availability", "safety"]},
+      "statement": {"type": "string", "minLength": 10, "maxLength": 500},
+      "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+      "validation_rule": {"type": "string", "minLength": 1, "maxLength": 200},
+      "status": {"type": "string", "enum": ["active", "retired"]}
+    }
+  }
+}

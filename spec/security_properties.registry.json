@@ -1,0 +1,26 @@
+[
+  {
+    "id": "AUTHZ-001",
+    "category": "authorization",
+    "statement": "An unauthorized synthetic principal must be denied access to a protected synthetic operation.",
+    "severity": "high",
+    "validation_rule": "synthetic_fixture_expected_deny",
+    "status": "active"
+  },
+  {
+    "id": "PRIV-001",
+    "category": "privacy",
+    "statement": "Telemetry persistence must include only explicitly allowlisted attributes.",
+    "severity": "high",
+    "validation_rule": "telemetry_allowlist_only",
+    "status": "active"
+  },
+  {
+    "id": "EVID-001",
+    "category": "integrity",
+    "statement": "Evidence manifests must verify against their canonical SHA-256 digest.",
+    "severity": "high",
+    "validation_rule": "canonical_manifest_sha256",
+    "status": "active"
+  }
+]
