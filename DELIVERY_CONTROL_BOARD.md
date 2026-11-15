@@ -8,9 +8,9 @@ Convert existing project work into tested software, publication-ready products, 
 | Priority | Workstream | Current evidence | Next deliverable | Definition of done |
 |---:|---|---|---|---|
 | P0 | ASYA Foundation | Branch `asya-foundation-0.1.0`; 7 local tests pass; GitHub Actions run 43684968409 succeeded; draft PR #6 | Corrected governance kernel + reproducible release candidate | Unit, integration, security, recovery and adversarial tests pass; isolated evaluator verifies artifacts; audit chain and signed attestations validate; reviewer approves |
-| P1 | The Intelligent Plant | Existing 2026 DOCX; approx. 6,337 words including tables; 6-inch × 9-inch page sections; no embedded cover art; no ISBN recorded | Editorial/fact-check report and final manuscript v1 | Scientific/legal/regulatory fact-check complete; citations verified; claims calibrated; final copyedit; print/eBook exports; cover/interior preview pass; ISBN/metadata verified; live listing or submission receipt |
+| P1 | The Intelligent Plant | Existing 2026 DOCX; approx. 6,337 words including tables; new front-cover concept PNG/PDF created; no embedded cover art in manuscript; no ISBN recorded | Editorial/fact-check report and final manuscript v1 | Scientific/legal/regulatory fact-check complete; citations verified; claims calibrated; final copyedit; print/eBook exports; cover/interior preview pass; ISBN/metadata verified; live listing or submission receipt |
 | P2 | The Audiobook Advantage | Existing V2 DOCX; approx. 4,740 words including tables; table claims approx. 12,000 words; ISBNs printed; no embedded cover art | Reconcile length, source claims, ISBN ownership and platform policy | Market claims rechecked; internal length discrepancy resolved; citations traceable; title/ISBN ownership verified; revised manuscript; cover/audio assets; platform QA; live listing or submission receipt |
-| P3 | Lake-area Marina AI Concierge | Concept and candidate marina names only; no validated pilot/customer evidence | One working inquiry-capture and lead-routing demo for one verified marina | Named decision-maker confirms problem; demo handles agreed test cases; consent/privacy and escalation work; pilot terms accepted; baseline and conversion metrics recorded |
+| P3 | Lake-area Marina AI Concierge | Browser-only inquiry-capture demo built; deterministic category routing, consent gate, local inbox and CSV export; no live marina integration or customer data | Configure one verified marina and build secure pilot backend | Named decision-maker confirms problem; demo handles agreed test cases; consent/privacy and escalation work; pilot terms accepted; baseline and conversion metrics recorded |
 | P4 | The Ultimate Test | Channel concept and Days 11–17 topic slate; no verified publishing pipeline or current analytics in this audit | 3 production-ready Shorts with approval checklist | Script QA, licensed assets, render QC, human approval, published URLs and baseline retention/subscriber metrics |
 | P5 | ProfitSwarm / ASYA 2.x–3.x | Architecture/specification material | One capability integrated behind ASYA policy gates | Demonstrated cost ledger, deterministic evaluation, rollback and verified outcome; no duplicate kernel |
 | P6 | AGRA | Detailed engineering/evaluation specification material | Reproducible benchmark using ASYA evaluation contracts | Fixed-seed benchmark, regression suite, artifact manifest and independent result |
@@ -46,8 +46,8 @@ Agents may research, draft, code, test, simulate, prepare submissions and assemb
 
 - ASYA is a tested scaffold, not a live autonomous swarm or production service.
 - The last confirmed GitHub Actions run passed before the latest evaluator-attribution correction; a fresh run on the latest PR head still needs confirmation.
-- Neither reviewed DOCX has an embedded cover image.
+- Neither reviewed DOCX has an embedded cover image; a separate front-cover concept exists for The Intelligent Plant, but it is not a KDP full-wrap cover.
 - The Intelligent Plant has no recorded ISBN in the reviewed file and requires substantive fact-checking.
 - The Audiobook Advantage has an internal word-count inconsistency and requires ISBN ownership and source verification.
-- Marina AI has no verified pilot, paying customer or measured revenue.
+- Marina AI has a local browser-only prototype, but no verified pilot, paying customer or measured revenue.
 - The Ultimate Test has no verified current publication/analytics evidence in this review.
