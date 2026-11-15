@@ -28,6 +28,12 @@ class TestRequest(StrictModel):
     scope_id: str = Field(default="local-synthetic", min_length=1, max_length=64)
     batch_size: int = Field(default=20, ge=1, le=200)
     seed: int = Field(default=7, ge=0, le=2**31 - 1)
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=16,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]{16,128}$",
+    )
 
 
 class TestObservation(StrictModel):
@@ -42,6 +48,9 @@ class RunRecord(StrictModel):
     run_id: str = Field(default_factory=lambda: str(uuid4()))
     scope_id: str
     status: str
+    seed: int = Field(default=7, ge=0, le=2**31 - 1)
+    generator_version: str = "aegis.synthetic.v1"
+    replay_fingerprint: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     created_at: datetime = Field(default_factory=utcnow)
     observations: list[TestObservation] = Field(default_factory=list)
     candidate_count: int = 0

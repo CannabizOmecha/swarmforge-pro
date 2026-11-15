@@ -9,7 +9,7 @@ from .models import EvidenceRecord, Finding, RunRecord
 
 
 class Store:
-    """Small transactional store for the single-node MVP."""
+    """Transactional SQLite store for the single-node synthetic MVP."""
 
     def __init__(self, path: str = "data/aegis.sqlite3"):
         self.path = Path(path)
@@ -29,10 +29,28 @@ class Store:
                 CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS findings (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS evidence (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS idempotency (
+                    key TEXT PRIMARY KEY,
+                    fingerprint TEXT NOT NULL,
+                    response_payload TEXT NOT NULL
+                );
             """)
 
-    def save_bundle(self, run: RunRecord, findings: list[Finding], evidence: list[EvidenceRecord]):
-        """Persist a run and its outputs atomically; never expose a partially saved run."""
+    def save_bundle(
+        self,
+        run: RunRecord,
+        findings: list[Finding],
+        evidence: list[EvidenceRecord],
+        *,
+        idempotency_key: str | None = None,
+        request_fingerprint: str | None = None,
+        response_payload: dict[str, Any] | None = None,
+    ):
+        """Persist run outputs and optional idempotency result in one transaction."""
+        if idempotency_key is not None and (
+            request_fingerprint is None or response_payload is None
+        ):
+            raise ValueError("Idempotency metadata must be complete.")
         with self._connect() as db, db:
             db.execute("INSERT INTO runs VALUES (?, ?)", (run.run_id, run.model_dump_json()))
             db.executemany(
@@ -43,6 +61,28 @@ class Store:
                 "INSERT INTO evidence VALUES (?, ?)",
                 [(item.evidence_id, item.model_dump_json()) for item in evidence],
             )
+            if idempotency_key is not None:
+                db.execute(
+                    "INSERT INTO idempotency VALUES (?, ?, ?)",
+                    (
+                        idempotency_key,
+                        request_fingerprint,
+                        json.dumps(response_payload, sort_keys=True, separators=(",", ":")),
+                    ),
+                )
+
+    def get_idempotency_result(self, key: str) -> dict[str, Any] | None:
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT fingerprint, response_payload FROM idempotency WHERE key=?",
+                (key,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "fingerprint": row["fingerprint"],
+            "response": json.loads(row["response_payload"]),
+        }
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._connect() as db:

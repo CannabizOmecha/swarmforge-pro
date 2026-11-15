@@ -43,6 +43,7 @@ def test_synthetic_run_produces_reproducible_evidence():
     assert findings[0].state.value == "validated"
     assert len(evidence[0].payload_sha256) == 64
     assert canonical_hash(evidence[0].manifest) == evidence[0].payload_sha256
+    assert run.replay_fingerprint is not None
 
 
 def test_store_bundle_is_atomic_on_constraint_failure(tmp_path):
@@ -58,6 +59,20 @@ def test_store_bundle_is_atomic_on_constraint_failure(tmp_path):
 
     assert store.get_run(run_two.run_id) is None
     assert store.counts() == before
+
+
+def test_store_additive_migration_preserves_existing_tables(tmp_path):
+    path = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.executescript("""
+            CREATE TABLE runs (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+            CREATE TABLE findings (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+            CREATE TABLE evidence (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+        """)
+    Store(str(path))
+    with sqlite3.connect(path) as db:
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert {"runs", "findings", "evidence", "idempotency"} <= tables
 
 
 def test_remote_scope_is_not_supported():

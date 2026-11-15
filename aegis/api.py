@@ -1,3 +1,5 @@
+import sqlite3
+
 from fastapi import FastAPI, HTTPException
 from jsonschema.exceptions import ValidationError
 
@@ -10,7 +12,7 @@ from .validation import validate_evidence_manifest
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.3.0",
+    version="0.4.0",
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()
@@ -56,18 +58,51 @@ def scope():
 
 @app.post("/runs")
 def create_run(request: TestRequest):
+    request_fingerprint = canonical_hash(request.model_dump(exclude={"idempotency_key"}))
+    key = request.idempotency_key
+    if key is not None:
+        cached = store.get_idempotency_result(key)
+        if cached is not None:
+            if cached["fingerprint"] != request_fingerprint:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Idempotency key was already used for a different request.",
+                )
+            return cached["response"]
+
     try:
         run, findings, evidence = execute_synthetic_run(
             request.scope_id, request.batch_size, request.seed
         )
     except AuthorizationError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    store.save_bundle(run, findings, evidence)
-    return {
+
+    response = {
         "run": run.model_dump(mode="json"),
         "findings": [f.model_dump(mode="json") for f in findings],
         "evidence": [e.model_dump(mode="json") for e in evidence],
     }
+    try:
+        store.save_bundle(
+            run,
+            findings,
+            evidence,
+            idempotency_key=key,
+            request_fingerprint=request_fingerprint if key is not None else None,
+            response_payload=response if key is not None else None,
+        )
+    except sqlite3.IntegrityError:
+        # Concurrent requests with the same key may both miss the initial read.
+        cached = store.get_idempotency_result(key) if key is not None else None
+        if cached is None:
+            raise
+        if cached["fingerprint"] != request_fingerprint:
+            raise HTTPException(
+                status_code=409,
+                detail="Idempotency key was concurrently used for a different request.",
+            )
+        return cached["response"]
+    return response
 
 
 @app.get("/runs/{run_id}")
@@ -76,6 +111,25 @@ def get_run(run_id: str):
     if run is None:
         raise HTTPException(status_code=404, detail="Run not found")
     return run
+
+
+@app.get("/runs/{run_id}/replay")
+def replay_run(run_id: str):
+    stored = store.get_run(run_id)
+    if stored is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    replayed, _, _ = execute_synthetic_run(
+        stored["scope_id"], len(stored["observations"]), stored.get("seed", 7)
+    )
+    expected = stored.get("replay_fingerprint")
+    actual = replayed.replay_fingerprint
+    return {
+        "run_id": run_id,
+        "reproducible": expected is not None and expected == actual,
+        "generator_version": replayed.generator_version,
+        "expected_fingerprint": expected,
+        "actual_fingerprint": actual,
+    }
 
 
 @app.get("/evidence/{evidence_id}")

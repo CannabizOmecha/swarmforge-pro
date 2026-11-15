@@ -14,6 +14,19 @@ def test_generated_events_and_evidence_meet_versioned_schemas():
     validate_evidence_manifest(evidence[0].manifest)
 
 
+def test_same_seed_produces_same_replay_fingerprint():
+    first, _, _ = execute_synthetic_run("local-synthetic", 25, 19)
+    second, _, _ = execute_synthetic_run("local-synthetic", 25, 19)
+    assert first.run_id != second.run_id
+    assert first.replay_fingerprint == second.replay_fingerprint
+
+
+def test_different_seed_changes_replay_fingerprint():
+    first, _, _ = execute_synthetic_run("local-synthetic", 25, 19)
+    second, _, _ = execute_synthetic_run("local-synthetic", 25, 20)
+    assert first.replay_fingerprint != second.replay_fingerprint
+
+
 def test_event_schema_rejects_unapproved_fields():
     run, _, _ = execute_synthetic_run("local-synthetic", 2, 19)
     event = run.observations[0].model_dump(mode="json")
