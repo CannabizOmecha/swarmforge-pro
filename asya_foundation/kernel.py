@@ -87,4 +87,4 @@ class GovernanceKernel:
         self.store.transition(tid,TaskState.RUNNING,executor); self.store.transition(tid,TaskState.EVALUATING,"evidence_gate")
         passed=bool(artifact.get("acceptance_criteria") and artifact.get("tests_passed") is True and artifact.get("evidence_ref"))
         result={"evaluation":"passed" if passed else "failed","artifact":artifact,"evaluator":"local_evidence_contract_gate","independent_verification":False}
-        self.store.transition(tid,TaskState.COMPLETED if passed else TaskState.FAILED,"independent_evaluator",result); return result
+        self.store.transition(tid,TaskState.COMPLETED if passed else TaskState.FAILED,"local_evidence_contract_gate",result); return result
