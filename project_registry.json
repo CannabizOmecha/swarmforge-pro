@@ -3,15 +3,119 @@
   "as_of": "2026-11-15",
   "status_semantics": "Planning status pending live verification; prior conversation context is not proof of current artifact completion.",
   "projects": [
-    {"id":"asya-foundation","name":"ASYA Foundation 0.1.0","priority":0,"status":"active","next_gate":"Recover baseline and pass governance/evaluation acceptance suite","dependencies":[]},
-    {"id":"intelligent-plant","name":"The Intelligent Plant","priority":1,"status":"blocked_pending_release_audit","next_gate":"Verify final manuscript, cover, metadata, KDP preview and publishing status","dependencies":[]},
-    {"id":"lake-marina","name":"Lake-area Marina AI Concierge","priority":2,"status":"discovery","next_gate":"Verify first three marina identities and validate one paid pilot workflow","dependencies":["asya-foundation"]},
-    {"id":"ultimate-test","name":"The Ultimate Test YouTube channel","priority":3,"status":"production_design","next_gate":"Reconcile scripts and create approval-gated production pipeline","dependencies":["asya-foundation"]},
-    {"id":"profitswarm","name":"ProfitSwarm","priority":4,"status":"architecture","next_gate":"Integrate economic measurement and safe execution","dependencies":["asya-foundation"]},
-    {"id":"asya-2-3","name":"ASYA 2.0 / 3.0","priority":5,"status":"specification_and_research","next_gate":"Promote capabilities only after Foundation gates pass","dependencies":["asya-foundation"]},
-    {"id":"homestead","name":"Rural Oklahoma homestead","priority":6,"status":"long_term","next_gate":"Build costed land and infrastructure plan after income systems are validated","dependencies":["intelligent-plant","lake-marina","ultimate-test"]},
-    {"id":"agra","name":"AGRA / agentic game evaluation","priority":7,"status":"research","next_gate":"Reuse ASYA evaluation harness for deterministic game/simulation tests","dependencies":["asya-foundation"]},
-    {"id":"3d-printing","name":"Bambu Lab P1S design workflow","priority":8,"status":"research","next_gate":"Validate CAD-to-print workflow and produce a tested prototype","dependencies":[]},
-    {"id":"personal-systems","name":"Gardening, cooking and household systems","priority":9,"status":"knowledge_operations","next_gate":"Create reusable regional references and seasonal plans","dependencies":[]}
-  ]
+    {
+      "id": "asya-foundation",
+      "name": "ASYA Foundation 0.1.0",
+      "priority": 0,
+      "status": "active",
+      "next_gate": "Recover baseline and pass governance/evaluation acceptance suite",
+      "dependencies": []
+    },
+    {
+      "id": "intelligent-plant",
+      "name": "The Intelligent Plant",
+      "priority": 1,
+      "status": "blocked_pending_release_audit",
+      "next_gate": "Verify final manuscript, cover, metadata, KDP preview and publishing status",
+      "dependencies": []
+    },
+    {
+      "id": "lake-marina",
+      "name": "Lake-area Marina AI Concierge",
+      "priority": 2,
+      "status": "discovery",
+      "next_gate": "Verify first three marina identities and validate one paid pilot workflow",
+      "dependencies": [
+        "asya-foundation"
+      ]
+    },
+    {
+      "id": "ultimate-test",
+      "name": "The Ultimate Test YouTube channel",
+      "priority": 3,
+      "status": "production_design",
+      "next_gate": "Reconcile scripts and create approval-gated production pipeline",
+      "dependencies": [
+        "asya-foundation"
+      ]
+    },
+    {
+      "id": "profitswarm",
+      "name": "ProfitSwarm",
+      "priority": 4,
+      "status": "architecture",
+      "next_gate": "Integrate economic measurement and safe execution",
+      "dependencies": [
+        "asya-foundation"
+      ]
+    },
+    {
+      "id": "asya-2-3",
+      "name": "ASYA 2.0 / 3.0",
+      "priority": 5,
+      "status": "specification_and_research",
+      "next_gate": "Promote capabilities only after Foundation gates pass",
+      "dependencies": [
+        "asya-foundation"
+      ]
+    },
+    {
+      "id": "homestead",
+      "name": "Rural Oklahoma homestead",
+      "priority": 6,
+      "status": "long_term",
+      "next_gate": "Build costed land and infrastructure plan after income systems are validated",
+      "dependencies": [
+        "intelligent-plant",
+        "lake-marina",
+        "ultimate-test"
+      ]
+    },
+    {
+      "id": "agra",
+      "name": "AGRA / agentic game evaluation",
+      "priority": 7,
+      "status": "research",
+      "next_gate": "Reuse ASYA evaluation harness for deterministic game/simulation tests",
+      "dependencies": [
+        "asya-foundation"
+      ]
+    },
+    {
+      "id": "3d-printing",
+      "name": "Bambu Lab P1S design workflow",
+      "priority": 8,
+      "status": "research",
+      "next_gate": "Validate CAD-to-print workflow and produce a tested prototype",
+      "dependencies": []
+    },
+    {
+      "id": "personal-systems",
+      "name": "Gardening, cooking and household systems",
+      "priority": 9,
+      "status": "knowledge_operations",
+      "next_gate": "Create reusable regional references and seasonal plans",
+      "dependencies": []
+    }
+  ],
+  "foundation_evidence": {
+    "verified_at": "2026-11-15",
+    "local_unit_tests": "7/7 passed",
+    "github_actions": {
+      "workflow": "ASYA Foundation 0.1.0",
+      "run_id": 43684968409,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "pull_request": "https://github.com/CannabizOmecha/swarmforge-pro/pull/6",
+    "release_status": "draft_review",
+    "limitations": [
+      "No live model-provider agents",
+      "No Temporal durable execution",
+      "No isolated independent evaluator or signed attestations",
+      "No production deployment",
+      "No verified revenue"
+    ],
+    "next_gate": "Implement cryptographically verifiable evaluator attestations and capability-scoped authorization; review PR before merge."
+  }
 }
