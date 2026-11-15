@@ -33,17 +33,16 @@ class Store:
 
     def save_bundle(self, run: RunRecord, findings: list[Finding], evidence: list[EvidenceRecord]):
         """Persist a run and its outputs atomically; never expose a partially saved run."""
-        with self._connect() as db:
-            with db:
-                db.execute("INSERT INTO runs VALUES (?, ?)", (run.run_id, run.model_dump_json()))
-                db.executemany(
-                    "INSERT INTO findings VALUES (?, ?)",
-                    [(item.finding_id, item.model_dump_json()) for item in findings],
-                )
-                db.executemany(
-                    "INSERT INTO evidence VALUES (?, ?)",
-                    [(item.evidence_id, item.model_dump_json()) for item in evidence],
-                )
+        with self._connect() as db, db:
+            db.execute("INSERT INTO runs VALUES (?, ?)", (run.run_id, run.model_dump_json()))
+            db.executemany(
+                "INSERT INTO findings VALUES (?, ?)",
+                [(item.finding_id, item.model_dump_json()) for item in findings],
+            )
+            db.executemany(
+                "INSERT INTO evidence VALUES (?, ?)",
+                [(item.evidence_id, item.model_dump_json()) for item in evidence],
+            )
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._connect() as db:
