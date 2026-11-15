@@ -12,21 +12,23 @@ def test_mad_and_robust_score():
 
 def test_policy_fails_closed():
     authorize("local-synthetic", "execute", 2)
-    try:
-        authorize("unknown", "execute", 1)
-        assert False, "unknown scope must be denied"
-    except AuthorizationError:
-        pass
-    try:
-        authorize("local-synthetic", "execute", 201)
-        assert False, "over-budget request must be denied"
-    except AuthorizationError:
-        pass
+    for scope, operation, count in [
+        ("unknown", "execute", 1),
+        ("local-synthetic", "execute", 201),
+        ("local-synthetic", "publish", 1),
+    ]:
+        try:
+            authorize(scope, operation, count)
+            assert False, "unauthorized request must be denied"
+        except AuthorizationError:
+            pass
 
 
 def test_privacy_minimization():
     assert "[REDACTED_EMAIL]" in redact_text("contact a.person@example.com")
-    clean = minimize_attributes({"operation": "read", "email": "a.person@example.com", "status_code": 200})
+    clean = minimize_attributes(
+        {"operation": "read", "email": "a.person@example.com", "status_code": 200}
+    )
     assert "email" not in clean
     assert clean["operation"] == "read"
 
