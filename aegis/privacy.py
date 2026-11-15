@@ -1,9 +1,9 @@
 import re
 from typing import Any
 
-EMAIL = re.compile(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b")
-PHONE = re.compile(r"(?<!\\w)(?:\\+?1[ .-]?)?(?:\\(?\\d{3}\\)?[ .-]?)\\d{3}[ .-]?\\d{4}(?!\\w)")
-TOKEN = re.compile(r"(?i)\\b(?:api[_-]?key|token|secret|password)\\s*[:=]\\s*[^\\s,;]+")
+EMAIL = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+PHONE = re.compile(r"(?<!\w)(?:\+?1[ .-]?)?(?:\(?\d{3}\)?[ .-]?)\d{3}[ .-]?\d{4}(?!\w)")
+TOKEN = re.compile(r"(?i)\b(?:api[_-]?key|token|secret|password)\s*[:=]\s*[^\s,;]+")
 
 
 def redact_text(value: str) -> str:
