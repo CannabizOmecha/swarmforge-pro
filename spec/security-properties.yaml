@@ -1,0 +1,24 @@
+version: "1.0.0"
+properties:
+  - id: AUTHZ-001
+    name: Unauthorized synthetic principal is denied
+    category: authorization
+    severity: high
+    oracle: explicit_fixture_assertion
+    expected: deny
+    actual_on_fixture_failure: simulated_policy_violation
+    enabled: true
+  - id: SCOPE-001
+    name: Unknown execution scope is denied
+    category: governance
+    severity: critical
+    oracle: policy_engine
+    expected: deny
+    enabled: true
+  - id: BUDGET-001
+    name: Test batch cannot exceed configured budget
+    category: resource_governance
+    severity: medium
+    oracle: policy_engine
+    expected: deny
+    enabled: true
