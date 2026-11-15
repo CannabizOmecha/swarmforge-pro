@@ -7,7 +7,7 @@ A local-first governance and independent-evaluation kernel for multi-agent work.
 - High/critical-risk tasks and external side effects require explicit human authorization.
 - Completion requires acceptance criteria, a passing test signal, and an evidence reference.
 - SQLite stores task state and a SHA-256 hash-linked event log.
-- The executor accepts local artifact metadata only. It does not execute arbitrary code, call external services, publish, spend money, or deploy infrastructure.
+- The executor accepts local artifact metadata only. It does not execute arbitrary code, call external services, publish, spend money, or deploy infrastructure. The current evidence gate checks the presence of acceptance criteria, a caller-supplied test signal, and an evidence reference; it is not an independent evaluator.
 - Hash chaining is tamper-evidence, not protection against a privileged attacker rewriting the database and all hashes.
 
 ## Local verification
