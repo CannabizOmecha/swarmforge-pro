@@ -19,7 +19,7 @@ class KernelTests(unittest.TestCase):
  def test_evidence_gate(self):
   t=self.k.submit(self.req()); out=self.k.execute_local(t["task_id"],"builder",{"acceptance_criteria":["test"],"tests_passed":True,"evidence_ref":"sha256:abc"})
   self.assertEqual(out["evaluation"],"passed")
- def test_no_self_certification(self):
+ def test_incomplete_evidence_rejected(self):
   t=self.k.submit(self.req()); out=self.k.execute_local(t["task_id"],"builder",{"tests_passed":True})
   self.assertEqual(out["evaluation"],"failed")
  def test_audit_hash_chain(self):
