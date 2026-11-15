@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from statistics import median
-from typing import Iterable
 
 
 def mad(values: Iterable[float]) -> float:
