@@ -1,12 +1,16 @@
 from fastapi import FastAPI, HTTPException
 
-from .engine import execute_synthetic_run
-from .experts import EXPERTS
+from .engine import canonical_hash, execute_synthetic_run
+from .experts import EXPERTS, route
 from .models import TestRequest
 from .policy import AuthorizationError, SCOPES
 from .store import Store
 
-app = FastAPI(title="AEGIS-MoE", version="0.1.0", description="Local-first policy-constrained security assurance foundation")
+app = FastAPI(
+    title="AEGIS-MoE",
+    version="0.2.0",
+    description="Local-first policy-constrained security assurance foundation",
+)
 store = Store()
 
 
@@ -17,26 +21,51 @@ def health():
 
 @app.get("/agents")
 def agents():
-    return {"agents": [{"name": e.name, "specialties": list(e.specialties), "mode": e.mode} for e in EXPERTS]}
+    return {
+        "agents": [
+            {"name": e.name, "specialties": list(e.specialties), "mode": e.mode}
+            for e in EXPERTS
+        ]
+    }
+
+
+@app.get("/routing/{task}")
+def routing(task: str):
+    if task not in {"run", "validate", "evaluate"}:
+        raise HTTPException(status_code=404, detail="Unknown workflow task")
+    return {"task": task, "sequence": route(task), "execution_mode": "deterministic"}
 
 
 @app.get("/scope")
 def scope():
-    return {"scopes": [{"scope_id": s.scope_id, "environment": s.environment, "allowed_operations": sorted(s.allowed_operations), "max_batch_size": s.max_batch_size, "network_enabled": s.network_enabled} for s in SCOPES.values()]}
+    return {
+        "scopes": [
+            {
+                "scope_id": s.scope_id,
+                "environment": s.environment,
+                "allowed_operations": sorted(s.allowed_operations),
+                "max_batch_size": s.max_batch_size,
+                "network_enabled": s.network_enabled,
+            }
+            for s in SCOPES.values()
+        ]
+    }
 
 
 @app.post("/runs")
 def create_run(request: TestRequest):
     try:
-        run, findings, evidence = execute_synthetic_run(request.scope_id, request.batch_size, request.seed)
+        run, findings, evidence = execute_synthetic_run(
+            request.scope_id, request.batch_size, request.seed
+        )
     except AuthorizationError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-    store.save_run(run)
-    for finding in findings:
-        store.save_finding(finding)
-    for record in evidence:
-        store.save_evidence(record)
-    return {"run": run.model_dump(mode="json"), "findings": [f.model_dump(mode="json") for f in findings], "evidence": [e.model_dump(mode="json") for e in evidence]}
+    store.save_bundle(run, findings, evidence)
+    return {
+        "run": run.model_dump(mode="json"),
+        "findings": [f.model_dump(mode="json") for f in findings],
+        "evidence": [e.model_dump(mode="json") for e in evidence],
+    }
 
 
 @app.get("/runs/{run_id}")
@@ -47,6 +76,30 @@ def get_run(run_id: str):
     return run
 
 
+@app.get("/evidence/{evidence_id}")
+def get_evidence(evidence_id: str):
+    record = store.get_evidence(evidence_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    return record
+
+
+@app.get("/evidence/{evidence_id}/verify")
+def verify_evidence(evidence_id: str):
+    record = store.get_evidence(evidence_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    actual = canonical_hash(record["manifest"])
+    valid = actual == record["payload_sha256"]
+    return {
+        "evidence_id": evidence_id,
+        "valid": valid,
+        "algorithm": "sha256",
+        "expected_sha256": record["payload_sha256"],
+        "actual_sha256": actual,
+    }
+
+
 @app.get("/findings")
 def get_findings():
     return {"findings": store.list_findings()}
@@ -55,4 +108,9 @@ def get_findings():
 @app.get("/metrics")
 def metrics():
     counts = store.counts()
-    return {**counts, "validated_findings": sum(1 for f in store.list_findings() if f["state"] == "validated")}
+    findings = store.list_findings()
+    return {
+        **counts,
+        "validated_findings": sum(1 for f in findings if f["state"] == "validated"),
+        "false_positive_findings": sum(1 for f in findings if f["state"] == "false_positive"),
+    }
