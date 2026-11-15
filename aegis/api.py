@@ -1,14 +1,16 @@
 from fastapi import FastAPI, HTTPException
+from jsonschema.exceptions import ValidationError
 
 from .engine import canonical_hash, execute_synthetic_run
 from .experts import EXPERTS, route
 from .models import TestRequest
 from .policy import SCOPES, AuthorizationError
 from .store import Store
+from .validation import validate_evidence_manifest
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.2.0",
+    version="0.3.0",
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()
@@ -90,10 +92,16 @@ def verify_evidence(evidence_id: str):
     if record is None:
         raise HTTPException(status_code=404, detail="Evidence not found")
     actual = canonical_hash(record["manifest"])
-    valid = actual == record["payload_sha256"]
+    try:
+        validate_evidence_manifest(record["manifest"])
+        schema_valid = True
+    except ValidationError:
+        schema_valid = False
+    valid = schema_valid and actual == record["payload_sha256"]
     return {
         "evidence_id": evidence_id,
         "valid": valid,
+        "schema_valid": schema_valid,
         "algorithm": "sha256",
         "expected_sha256": record["payload_sha256"],
         "actual_sha256": actual,

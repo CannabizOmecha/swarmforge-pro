@@ -1,2 +1,4 @@
-fastapi 
-uvicorn[standard] 
+# Single source of dependency constraints is pyproject.toml.
+# Runtime install: python -m pip install -e .
+# Development/CI install: python -m pip install -e ".[dev]"
+-e .

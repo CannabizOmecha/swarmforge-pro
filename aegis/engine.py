@@ -10,6 +10,7 @@ from .experts import route
 from .models import EvidenceRecord, Finding, FindingState, RunRecord, TestObservation
 from .policy import authorize
 from .privacy import minimize_attributes
+from .validation import validate_event, validate_evidence_manifest
 
 
 def canonical_hash(payload: dict[str, Any]) -> str:
@@ -17,7 +18,9 @@ def canonical_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def execute_synthetic_run(scope_id: str, batch_size: int, seed: int) -> tuple[RunRecord, list[Finding], list[EvidenceRecord]]:
+def execute_synthetic_run(
+    scope_id: str, batch_size: int, seed: int
+) -> tuple[RunRecord, list[Finding], list[EvidenceRecord]]:
     scope = authorize(scope_id, "execute", batch_size)
     rng = random.Random(seed)
     run = RunRecord(scope_id=scope.scope_id, status="completed")
@@ -37,13 +40,15 @@ def execute_synthetic_run(scope_id: str, batch_size: int, seed: int) -> tuple[Ru
             outcome = "simulated_policy_violation"
             latency = 101.0
             attributes["outcome"] = outcome
-        observations.append(TestObservation(
+        observation = TestObservation(
             test_id=f"{run.run_id}-T{index + 1:04d}",
             property_id=property_id,
             outcome=outcome,
             latency_ms=latency,
             attributes=minimize_attributes(attributes),
-        ))
+        )
+        validate_event(observation)
+        observations.append(observation)
 
     for observation in observations:
         score = robust_anomaly_score(reference_latency, observation.latency_ms)
@@ -56,7 +61,10 @@ def execute_synthetic_run(scope_id: str, batch_size: int, seed: int) -> tuple[Ru
                 security_impact="high",
                 expected="Unauthorized synthetic principal is denied.",
                 actual="Synthetic fixture returned simulated_policy_violation.",
-                rationale="The explicit AUTHZ-001 fixture assertion failed; this is a controlled demonstration, not a real vulnerability.",
+                rationale=(
+                    "The explicit AUTHZ-001 fixture assertion failed; this is a controlled "
+                    "demonstration, not a real vulnerability."
+                ),
             )
             manifest = {
                 "run_id": run.run_id,
@@ -72,6 +80,7 @@ def execute_synthetic_run(scope_id: str, batch_size: int, seed: int) -> tuple[Ru
                 "experts": route("run"),
                 "observation": observation.model_dump(mode="json"),
             }
+            validate_evidence_manifest(manifest)
             record = EvidenceRecord(
                 run_id=run.run_id,
                 finding_id=finding.finding_id,
