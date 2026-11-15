@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegis.local/schemas/evidence.schema.json",
+  "title": "AEGIS evidence manifest",
+  "type": "object",
+  "required": [
+    "run_id",
+    "finding_id",
+    "scope_id",
+    "environment",
+    "property_id",
+    "test_id",
+    "expected",
+    "actual",
+    "generator",
+    "seed",
+    "experts",
+    "observation"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "finding_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scope_id": {
+      "type": "string",
+      "const": "local-synthetic"
+    },
+    "environment": {
+      "type": "string",
+      "const": "synthetic-fixtures"
+    },
+    "property_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "test_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected": {
+      "type": "string"
+    },
+    "actual": {
+      "type": "string"
+    },
+    "generator": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "experts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observation": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}
