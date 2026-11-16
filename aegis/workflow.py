@@ -36,10 +36,10 @@ def _request_payload(request: TestRequest) -> dict[str, Any]:
 
 
 def _load_committed_response(store: Store, workflow_id: str) -> dict[str, Any]:
-    result = store.get_idempotency_result(f"workflow:{workflow_id}")
-    if result is None:
-        raise WorkflowStateConflict("Committed workflow is missing its response record.")
-    return result["response"]
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None or workflow["state"] != "committed" or workflow["stage_payload"] is None:
+        raise WorkflowStateConflict("Committed workflow is missing its response checkpoint.")
+    return workflow["stage_payload"]
 
 
 def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
@@ -116,8 +116,6 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
                     run,
                     findings,
                     evidence,
-                    idempotency_key=f"workflow:{workflow_id}",
-                    request_fingerprint=workflow["request_fingerprint"],
                     response_payload=response,
                     workflow_id=workflow_id,
                 )
@@ -139,6 +137,14 @@ def process_run(store: Store, request: TestRequest) -> dict[str, Any]:
         workflow = store.get_workflow_by_idempotency_key(request.idempotency_key)
         if workflow is not None and workflow["request_fingerprint"] != fingerprint:
             raise IdempotencyConflict("Idempotency key was reused with different request data.")
+        if workflow is None:
+            legacy = store.get_idempotency_result(request.idempotency_key)
+            if legacy is not None:
+                if legacy["fingerprint"] != fingerprint:
+                    raise IdempotencyConflict(
+                        "Idempotency key was reused with different request data."
+                    )
+                return legacy["response"]
 
     if workflow is None:
         workflow_id = str(uuid4())

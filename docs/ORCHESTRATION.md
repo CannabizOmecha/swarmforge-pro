@@ -14,6 +14,7 @@ The local MVP uses a deterministic, sequential workflow state machine backed by 
 ## Recovery semantics
 - Each transition uses a compare-and-set update against the expected prior state.
 - A client-supplied idempotency key is bound to a canonical request fingerprint. Same-key/same-request calls resume or return the original result; same-key/different-request calls return HTTP 409.
+- Legacy idempotency rows created before the workflow-state migration are checked and honored, preventing a retry across the upgrade boundary from creating a duplicate run.
 - Execution failure leaves the workflow at AUTHORIZED with a sanitized error code. A retry with the same idempotency key or POST /workflows/{workflow_id}/resume continues the same workflow.
 - A successful execution is checkpointed at EXECUTED. If final persistence fails, resume commits the saved payload without rerunning the generator.
 - Execution attempts are bounded to three. After the third failure the workflow becomes EXHAUSTED and will not execute again.

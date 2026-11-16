@@ -1,9 +1,11 @@
 import pytest
 
 from aegis import workflow
+from aegis.engine import canonical_hash, execute_synthetic_run
 from aegis.models import TestRequest as RunRequest
 from aegis.store import Store
 from aegis.workflow import (
+    IdempotencyConflict,
     WorkflowExecutionError,
     WorkflowRetryExhausted,
     process_run,
@@ -127,3 +129,35 @@ def test_invalid_workflow_transition_is_rejected(tmp_path):
         store.transition_workflow(
             "workflow-transition-test", "accepted", "committed"
         )
+
+
+def test_legacy_idempotency_records_survive_workflow_upgrade(tmp_path):
+    store = Store(str(tmp_path / "legacy-idempotency.sqlite3"))
+    key = "legacy-request-key-0001"
+    request_payload = {"scope_id": "local-synthetic", "batch_size": 10, "seed": 41}
+    run, findings, evidence = execute_synthetic_run("local-synthetic", 10, 41)
+    legacy_response = {
+        "run": run.model_dump(mode="json"),
+        "findings": [item.model_dump(mode="json") for item in findings],
+        "evidence": [item.model_dump(mode="json") for item in evidence],
+    }
+    store.save_bundle(
+        run,
+        findings,
+        evidence,
+        idempotency_key=key,
+        request_fingerprint=canonical_hash(request_payload),
+        response_payload=legacy_response,
+    )
+
+    same_request = RunRequest(**request_payload, idempotency_key=key)
+    assert process_run(store, same_request) == legacy_response
+    assert store.counts()["runs"] == 1
+    assert store.counts()["workflows"] == 0
+
+    different_request = RunRequest(
+        scope_id="local-synthetic", batch_size=10, seed=42, idempotency_key=key
+    )
+    with pytest.raises(IdempotencyConflict):
+        process_run(store, different_request)
+    assert store.counts()["runs"] == 1

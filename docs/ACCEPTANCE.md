@@ -37,6 +37,7 @@ This matrix describes the implemented local-synthetic MVP. PASS means a named au
 | Bounded retry exhaustion | tests/test_workflow.py::test_workflow_retry_budget_is_bounded | PASS |
 | Commit retry resumes from EXECUTED checkpoint without rerunning | tests/test_workflow.py::test_executed_checkpoint_resumes_commit_without_rerunning_engine | PASS |
 | Workflow status endpoint | tests/test_api.py::test_run_persistence_and_evidence_verification checks the committed workflow state | PASS |
+| Legacy idempotency compatibility across workflow migration | tests/test_workflow.py::test_legacy_idempotency_records_survive_workflow_upgrade | PENDING CI |
 | Expert routing metadata | tests/test_api.py::test_health_scope_and_agent_routing | PASS as deterministic routing metadata only |
 | OPA/Rego authorization runtime parity tests | policy/aegis.rego exists; OPA CLI not integrated in CI | NOT IMPLEMENTED |
 | Typed capability-scoped expert adapter runtime | Not implemented | NOT IMPLEMENTED |
