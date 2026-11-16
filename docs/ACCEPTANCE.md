@@ -5,11 +5,11 @@ This matrix describes the implemented local-synthetic MVP. PASS means a named au
 ## Latest implementation verification
 
 - Branch: aegis-moe-foundation
-- Implementation commit: 9a5233696c38a96c261e1eb95abd71bfab92d26f
-- CI run #26: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43894186350
+- Implementation commit: df40376bfdb2f25ffc992d3d1d29ea5f613866dc
+- CI run #28: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43894651514
 - Result: PASS.
 - Verified job steps: dependency installation, unit/API tests, Python compilation, Ruff lint, and JSON Schema validation all completed successfully.
-- Pytest output: 23 tests passed. One upstream Starlette/httpx deprecation warning remains; there were no project pytest-collection warnings.
+- Pytest output: 24 tests passed. One upstream Starlette/httpx deprecation warning remains; there were no project pytest-collection warnings.
 - Ruff output: All checks passed.
 - JSON Schema output: JSON Schema contracts valid.
 - Historical CI #7: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43662227052
@@ -37,7 +37,7 @@ This matrix describes the implemented local-synthetic MVP. PASS means a named au
 | Bounded retry exhaustion | tests/test_workflow.py::test_workflow_retry_budget_is_bounded | PASS |
 | Commit retry resumes from EXECUTED checkpoint without rerunning | tests/test_workflow.py::test_executed_checkpoint_resumes_commit_without_rerunning_engine | PASS |
 | Workflow status endpoint | tests/test_api.py::test_run_persistence_and_evidence_verification checks the committed workflow state | PASS |
-| Legacy idempotency compatibility across workflow migration | tests/test_workflow.py::test_legacy_idempotency_records_survive_workflow_upgrade | PENDING CI |
+| Legacy idempotency compatibility across workflow migration | tests/test_workflow.py::test_legacy_idempotency_records_survive_workflow_upgrade | PASS |
 | Expert routing metadata | tests/test_api.py::test_health_scope_and_agent_routing | PASS as deterministic routing metadata only |
 | OPA/Rego authorization runtime parity tests | policy/aegis.rego exists; OPA CLI not integrated in CI | NOT IMPLEMENTED |
 | Typed capability-scoped expert adapter runtime | Not implemented | NOT IMPLEMENTED |
