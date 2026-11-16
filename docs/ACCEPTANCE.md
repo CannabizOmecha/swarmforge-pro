@@ -2,15 +2,18 @@
 
 This matrix describes the implemented local-synthetic MVP. PASS means a named automated test exists and the linked GitHub Actions run passed for the referenced implementation commit. It does not mean production readiness.
 
-## Latest verification before this increment
+## Latest implementation verification
 
 - Branch: aegis-moe-foundation
-- Commit: c8496da7bcef5482fbca095bb150b8bce344095b
-- CI run #20: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43727178344
-- Result: PASS. Actual job steps confirmed dependency installation, pytest, compileall, Ruff, and JSON Schema validation all completed successfully.
-- Latest job log showed 18 tests passed, Ruff reported all checks passed, and JSON Schema contracts validated.
+- Implementation commit: 9a5233696c38a96c261e1eb95abd71bfab92d26f
+- CI run #26: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43894186350
+- Result: PASS.
+- Verified job steps: dependency installation, unit/API tests, Python compilation, Ruff lint, and JSON Schema validation all completed successfully.
+- Pytest output: 23 tests passed. One upstream Starlette/httpx deprecation warning remains; there were no project pytest-collection warnings.
+- Ruff output: All checks passed.
+- JSON Schema output: JSON Schema contracts valid.
 - Historical CI #7: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43662227052
-- Root cause established from the full job log: tests/test_api.py::test_scope_rejection_and_run_persistence called Store.save_run, but the API/store refactor had removed that method. The mismatch raised AttributeError. The failing test was stale relative to the new atomic save_bundle API; the fix was to update the test to exercise the new bundle persistence path and then add the newer API tests. This is a test/implementation contract mismatch, not a runtime security finding.
+- Root cause established from the full job log: tests/test_api.py::test_scope_rejection_and_run_persistence called Store.save_run, but the API/store refactor had removed that method. The mismatch raised AttributeError. The test was stale relative to the transactional save_bundle API. This was a test/implementation contract mismatch, not a runtime security finding.
 - Repository tree inspection found no tracked Python bytecode, SQLite database, or generated runtime data.
 
 ## Acceptance matrix
@@ -29,10 +32,11 @@ This matrix describes the implemented local-synthetic MVP. PASS means a named au
 | Evidence SHA-256 verification and tamper detection | tests/test_api.py::test_run_persistence_and_evidence_verification; tests/test_api.py::test_evidence_verification_detects_manifest_tampering | PASS |
 | Idempotent request replay and key-conflict rejection | tests/test_api.py::test_idempotency_returns_original_run_and_rejects_key_reuse | PASS |
 | Deterministic semantic replay | tests/test_api.py::test_run_replay_reproduces_semantic_fingerprint; tests/test_validation.py::test_same_seed_produces_same_replay_fingerprint; tests/test_validation.py::test_different_seed_changes_replay_fingerprint | PASS |
-| Durable workflow state transitions and stage checkpoints | tests/test_workflow.py::test_workflow_persists_checkpoints_and_commits_bundle_atomically; tests/test_workflow.py::test_invalid_workflow_transition_is_rejected | PENDING CI |
-| Execution failure recovery on the same workflow | tests/test_workflow.py::test_execution_failure_resumes_same_workflow_without_duplicate_run | PENDING CI |
-| Bounded retry exhaustion | tests/test_workflow.py::test_workflow_retry_budget_is_bounded | PENDING CI |
-| Commit retry resumes from EXECUTED checkpoint without rerunning | tests/test_workflow.py::test_executed_checkpoint_resumes_commit_without_rerunning_engine | PENDING CI |
+| Durable workflow state transitions and stage checkpoints | tests/test_workflow.py::test_workflow_persists_checkpoints_and_commits_bundle_atomically; tests/test_workflow.py::test_invalid_workflow_transition_is_rejected | PASS |
+| Execution failure recovery on the same workflow | tests/test_workflow.py::test_execution_failure_resumes_same_workflow_without_duplicate_run | PASS |
+| Bounded retry exhaustion | tests/test_workflow.py::test_workflow_retry_budget_is_bounded | PASS |
+| Commit retry resumes from EXECUTED checkpoint without rerunning | tests/test_workflow.py::test_executed_checkpoint_resumes_commit_without_rerunning_engine | PASS |
+| Workflow status endpoint | tests/test_api.py::test_run_persistence_and_evidence_verification checks the committed workflow state | PASS |
 | Expert routing metadata | tests/test_api.py::test_health_scope_and_agent_routing | PASS as deterministic routing metadata only |
 | OPA/Rego authorization runtime parity tests | policy/aegis.rego exists; OPA CLI not integrated in CI | NOT IMPLEMENTED |
 | Typed capability-scoped expert adapter runtime | Not implemented | NOT IMPLEMENTED |
@@ -42,6 +46,7 @@ This matrix describes the implemented local-synthetic MVP. PASS means a named au
 | OpenTelemetry traces and structured audit backend | Not implemented | NOT IMPLEMENTED |
 | API authentication and multi-tenant isolation | Not implemented; bind to loopback only | BLOCKED before any non-loopback exposure |
 | Encrypted key management and immutable external evidence storage | Not implemented | BLOCKED pending deployment/security design |
+| Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
 | Production deployment and operational SLO verification | Not implemented | BLOCKED; no production-readiness claim |
 
 ## Release gate
