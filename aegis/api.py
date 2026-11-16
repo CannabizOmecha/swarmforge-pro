@@ -3,16 +3,24 @@ import sqlite3
 from fastapi import FastAPI, HTTPException
 from jsonschema.exceptions import ValidationError
 
-from .engine import canonical_hash, execute_synthetic_run
+from .engine import canonical_hash
 from .experts import EXPERTS, route
 from .models import TestRequest
 from .policy import SCOPES, AuthorizationError
-from .store import Store
+from .store import Store, WorkflowStateConflict
 from .validation import validate_evidence_manifest
+from .workflow import (
+    IdempotencyConflict,
+    WorkflowExecutionError,
+    WorkflowNotFound,
+    WorkflowRetryExhausted,
+    process_run,
+    resume_workflow,
+)
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.4.0",
+    version="0.5.0",
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()
@@ -56,53 +64,81 @@ def scope():
     }
 
 
+def _workflow_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, AuthorizationError):
+        return HTTPException(status_code=403, detail="Workflow scope is not authorized.")
+    if isinstance(exc, IdempotencyConflict):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, WorkflowNotFound):
+        return HTTPException(status_code=404, detail="Workflow not found.")
+    if isinstance(exc, WorkflowStateConflict):
+        return HTTPException(status_code=409, detail="Workflow state changed; inspect and resume.")
+    if isinstance(exc, WorkflowRetryExhausted):
+        return HTTPException(
+            status_code=503,
+            detail="Workflow retry budget exhausted; manual inspection is required.",
+            headers={"X-Workflow-ID": exc.workflow_id},
+        )
+    if isinstance(exc, WorkflowExecutionError):
+        return HTTPException(
+            status_code=503,
+            detail=f"Workflow {exc.stage} stage failed; retry or resume using the workflow ID.",
+            headers={"X-Workflow-ID": exc.workflow_id},
+        )
+    return HTTPException(status_code=503, detail="Workflow could not be completed.")
+
+
 @app.post("/runs")
 def create_run(request: TestRequest):
-    request_fingerprint = canonical_hash(request.model_dump(exclude={"idempotency_key"}))
-    key = request.idempotency_key
-    if key is not None:
-        cached = store.get_idempotency_result(key)
-        if cached is not None:
-            if cached["fingerprint"] != request_fingerprint:
-                raise HTTPException(
-                    status_code=409,
-                    detail="Idempotency key was already used for a different request.",
-                )
-            return cached["response"]
-
     try:
-        run, findings, evidence = execute_synthetic_run(
-            request.scope_id, request.batch_size, request.seed
-        )
-    except AuthorizationError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        return process_run(store, request)
+    except (
+        AuthorizationError,
+        IdempotencyConflict,
+        WorkflowExecutionError,
+        WorkflowRetryExhausted,
+        WorkflowNotFound,
+        WorkflowStateConflict,
+    ) as exc:
+        raise _workflow_http_error(exc) from exc
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=503, detail="Workflow persistence is temporarily unavailable."
+        ) from exc
 
-    response = {
-        "run": run.model_dump(mode="json"),
-        "findings": [f.model_dump(mode="json") for f in findings],
-        "evidence": [e.model_dump(mode="json") for e in evidence],
+
+@app.get("/workflows/{workflow_id}")
+def get_workflow(workflow_id: str):
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return {
+        "workflow_id": workflow["id"],
+        "state": workflow["state"],
+        "attempt_count": workflow["attempt_count"],
+        "last_error_code": workflow["last_error_code"],
+        "created_at": workflow["created_at"],
+        "updated_at": workflow["updated_at"],
     }
+
+
+@app.post("/workflows/{workflow_id}/resume")
+def resume_workflow_endpoint(workflow_id: str):
     try:
-        store.save_bundle(
-            run,
-            findings,
-            evidence,
-            idempotency_key=key,
-            request_fingerprint=request_fingerprint if key is not None else None,
-            response_payload=response if key is not None else None,
-        )
-    except sqlite3.IntegrityError:
-        # Concurrent requests with the same key may both miss the initial read.
-        cached = store.get_idempotency_result(key) if key is not None else None
-        if cached is None:
-            raise
-        if cached["fingerprint"] != request_fingerprint:
-            raise HTTPException(
-                status_code=409,
-                detail="Idempotency key was concurrently used for a different request.",
-            )
-        return cached["response"]
-    return response
+        return resume_workflow(store, workflow_id)
+    except (
+        AuthorizationError,
+        IdempotencyConflict,
+        WorkflowExecutionError,
+        WorkflowRetryExhausted,
+        WorkflowNotFound,
+        WorkflowStateConflict,
+    ) as exc:
+        raise _workflow_http_error(exc) from exc
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=503, detail="Workflow persistence is temporarily unavailable."
+        ) from exc
 
 
 @app.get("/runs/{run_id}")
@@ -118,6 +154,8 @@ def replay_run(run_id: str):
     stored = store.get_run(run_id)
     if stored is None:
         raise HTTPException(status_code=404, detail="Run not found")
+    from .engine import execute_synthetic_run
+
     replayed, _, _ = execute_synthetic_run(
         stored["scope_id"], len(stored["observations"]), stored.get("seed", 7)
     )

@@ -30,6 +30,8 @@ def test_run_persistence_and_evidence_verification(tmp_path, monkeypatch):
     assert response.status_code == 200
     payload = response.json()
     run_id = payload["run"]["run_id"]
+    workflow_id = payload["workflow_id"]
+    assert client.get(f"/workflows/{workflow_id}").json()["state"] == "committed"
     assert client.get(f"/runs/{run_id}").status_code == 200
     assert len(payload["findings"]) == 1
     evidence_id = payload["evidence"][0]["evidence_id"]
