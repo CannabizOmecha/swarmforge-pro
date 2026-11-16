@@ -1,7 +1,7 @@
 import pytest
 
 from aegis import workflow
-from aegis.models import TestRequest
+from aegis.models import TestRequest as RunRequest
 from aegis.store import Store
 from aegis.workflow import (
     WorkflowExecutionError,
@@ -12,7 +12,7 @@ from aegis.workflow import (
 
 
 def request(key="workflow-test-key-0001"):
-    return TestRequest(scope_id="local-synthetic", batch_size=10, seed=41, idempotency_key=key)
+    return RunRequest(scope_id="local-synthetic", batch_size=10, seed=41, idempotency_key=key)
 
 
 def test_workflow_persists_checkpoints_and_commits_bundle_atomically(tmp_path):

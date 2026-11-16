@@ -25,6 +25,7 @@ jobs:
       - name: Diagnose and normalize store imports
         run: |
           ruff check --fix aegis/store.py || true
+          git diff -- aegis/store.py
           sed -n '1,18p' aegis/store.py
       - name: Lint
         run: ruff check aegis tests
