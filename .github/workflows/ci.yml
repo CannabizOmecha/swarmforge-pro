@@ -22,6 +22,10 @@ jobs:
         run: pytest -q
       - name: Compile
         run: python -m compileall -q aegis tests
+      - name: Diagnose and normalize store imports
+        run: |
+          ruff check --fix aegis/store.py || true
+          sed -n '1,18p' aegis/store.py
       - name: Lint
         run: ruff check aegis tests
       - name: Validate JSON schemas and contracts
