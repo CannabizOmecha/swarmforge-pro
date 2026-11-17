@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from enum import StrEnum
 from time import perf_counter
@@ -53,6 +54,22 @@ class AgentResult(StrictContract):
     adapter_mode: Literal["deterministic_mock"]
     duration_ms: int = Field(ge=0)
     abstention_reason: str | None = Field(default=None, max_length=96)
+
+
+class AgentPipelineRequest(StrictContract):
+    scope_id: Literal["local-synthetic"] = "local-synthetic"
+    fixture_id: Literal["authz-deny-v1"] = "authz-deny-v1"
+    observed_decision: Literal["allow", "deny"]
+    deadline_ms: int = Field(default=250, ge=10, le=2000)
+    max_output_bytes: int = Field(default=4096, ge=128, le=8192)
+
+
+class AgentPipelineResult(StrictContract):
+    pipeline_id: UUID = Field(default_factory=uuid4)
+    status: AgentStatus
+    stages: list[AgentResult]
+    summary: dict[str, Any]
+    adapter_mode: Literal["deterministic_mock"]
 
 
 class AdapterResponse(StrictContract):
@@ -164,11 +181,20 @@ class AgentToolbox:
 
     def review_candidate(self, candidate: dict[str, Any]) -> dict[str, Any]:
         self._require(Capability.REVIEW_CANDIDATE)
-        required = {"property_id", "expected", "actual", "evidence_id", "scope_id"}
+        required = {"property_id", "expected", "actual", "scope_id", "candidate_sha256"}
         issues = sorted(required.difference(candidate))
         if candidate.get("scope_id") != "local-synthetic":
             issues.append("scope_not_local_synthetic")
-        return {"accepted": not issues, "issues": issues}
+        unsigned = {key: value for key, value in candidate.items() if key != "candidate_sha256"}
+        try:
+            expected_digest = candidate_digest(unsigned)
+        except (TypeError, ValueError):
+            expected_digest = ""
+        if candidate.get("candidate_sha256") != expected_digest:
+            issues.append("candidate_digest_mismatch")
+        if candidate.get("property_id") != "AUTHZ-001":
+            issues.append("unknown_security_property")
+        return {"accepted": not issues, "issues": sorted(set(issues))}
 
 
 class ExpertAdapter(Protocol):
@@ -317,4 +343,117 @@ async def execute_agent_task(
         adapter_mode="deterministic_mock",
         duration_ms=int((perf_counter() - started) * 1000),
         abstention_reason=response.abstention_reason,
+    )
+
+def candidate_digest(candidate: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        candidate,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+async def execute_validation_pipeline(
+    request: AgentPipelineRequest,
+    adapters: dict[str, ExpertAdapter] | None = None,
+) -> AgentPipelineResult:
+    """Run generator -> independent security validator -> independent critic."""
+    stages: list[AgentResult] = []
+
+    async def dispatch(task: AgentTask) -> AgentResult:
+        result = await execute_agent_task(task, adapters)
+        stages.append(result)
+        return result
+
+    inspect = await dispatch(
+        AgentTask(
+            scope_id=request.scope_id,
+            task_type=AgentTaskType.INSPECT_FIXTURE,
+            payload={"fixture_id": request.fixture_id},
+            deadline_ms=request.deadline_ms,
+            max_output_bytes=request.max_output_bytes,
+        )
+    )
+    if inspect.status != AgentStatus.COMPLETED:
+        return AgentPipelineResult(
+            status=inspect.status,
+            stages=stages,
+            summary={"stopped_after": "test_generator", "reason": inspect.abstention_reason},
+            adapter_mode="deterministic_mock",
+        )
+
+    expected = inspect.output.get("expected_decision")
+    property_id = inspect.output.get("property_id")
+    if expected not in {"allow", "deny"} or property_id != "AUTHZ-001":
+        raise AgentContractError("Generator output failed the pipeline contract.")
+
+    validation = await dispatch(
+        AgentTask(
+            scope_id=request.scope_id,
+            task_type=AgentTaskType.VALIDATE_FIXTURE,
+            payload={
+                "fixture_id": request.fixture_id,
+                "observed_decision": request.observed_decision,
+            },
+            deadline_ms=request.deadline_ms,
+            max_output_bytes=request.max_output_bytes,
+        )
+    )
+    if validation.status != AgentStatus.COMPLETED:
+        return AgentPipelineResult(
+            status=validation.status,
+            stages=stages,
+            summary={"stopped_after": "security_validator", "reason": validation.abstention_reason},
+            adapter_mode="deterministic_mock",
+        )
+
+    if validation.output.get("property_id") != property_id:
+        raise AgentContractError("Validator property identity did not match the generator.")
+
+    unsigned_candidate = {
+        "property_id": property_id,
+        "expected": expected,
+        "actual": request.observed_decision,
+        "scope_id": request.scope_id,
+    }
+    candidate = {
+        **unsigned_candidate,
+        "candidate_sha256": candidate_digest(unsigned_candidate),
+    }
+    critique = await dispatch(
+        AgentTask(
+            scope_id=request.scope_id,
+            task_type=AgentTaskType.CRITIQUE_CANDIDATE,
+            payload={"candidate": candidate},
+            deadline_ms=request.deadline_ms,
+            max_output_bytes=request.max_output_bytes,
+        )
+    )
+    if critique.status != AgentStatus.COMPLETED:
+        return AgentPipelineResult(
+            status=critique.status,
+            stages=stages,
+            summary={"stopped_after": "critic", "reason": critique.abstention_reason},
+            adapter_mode="deterministic_mock",
+        )
+
+    accepted = critique.output.get("accepted") is True
+    return AgentPipelineResult(
+        status=AgentStatus.COMPLETED if accepted else AgentStatus.REJECTED,
+        stages=stages,
+        summary={
+            "scope_id": request.scope_id,
+            "property_id": property_id,
+            "expected_decision": expected,
+            "observed_decision": request.observed_decision,
+            "security_property_passed": validation.output.get("security_property_passed") is True,
+            "violation_confirmed": validation.output.get("violation_confirmed") is True,
+            "critic_accepted": accepted,
+            "candidate_sha256": candidate["candidate_sha256"],
+            "persistence": "not_performed",
+            "note": "Synthetic validation only; no finding or evidence record was persisted.",
+        },
+        adapter_mode="deterministic_mock",
     )

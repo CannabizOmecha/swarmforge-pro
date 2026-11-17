@@ -61,6 +61,37 @@ def test_agent_task_endpoint_rejects_untrusted_payloads(tmp_path, monkeypatch):
     assert malformed.status_code == 422
 
 
+def test_agent_pipeline_endpoint_runs_three_independent_experts(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    response = client.post(
+        "/agent-pipelines/validate",
+        json={"fixture_id": "authz-deny-v1", "observed_decision": "allow"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert [stage["expert_name"] for stage in result["stages"]] == [
+        "test_generator",
+        "security_validator",
+        "critic",
+    ]
+    assert result["summary"]["violation_confirmed"] is True
+    assert result["summary"]["critic_accepted"] is True
+    assert result["summary"]["persistence"] == "not_performed"
+
+
+def test_agent_pipeline_endpoint_rejects_non_synthetic_scope(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    response = client.post(
+        "/agent-pipelines/validate",
+        json={
+            "scope_id": "production",
+            "fixture_id": "authz-deny-v1",
+            "observed_decision": "allow",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_run_persistence_and_evidence_verification(tmp_path, monkeypatch):
     client = client_for(tmp_path, monkeypatch)
     response = client.post(

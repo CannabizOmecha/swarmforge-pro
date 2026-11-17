@@ -7,8 +7,10 @@ from .agent_runtime import (
     EXPERT_CAPABILITIES,
     AgentContractError,
     AgentInputError,
+    AgentPipelineRequest,
     AgentTask,
     execute_agent_task,
+    execute_validation_pipeline,
 )
 from .engine import canonical_hash
 from .experts import EXPERTS, route
@@ -74,6 +76,19 @@ async def run_agent_task(request: AgentTask):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except AgentContractError as exc:
         raise HTTPException(status_code=502, detail="Expert adapter violated its execution contract.") from exc
+
+
+@app.post("/agent-pipelines/validate")
+async def run_agent_validation_pipeline(request: AgentPipelineRequest):
+    try:
+        result = await execute_validation_pipeline(request)
+        return result.model_dump(mode="json")
+    except AgentInputError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except AgentContractError as exc:
+        raise HTTPException(
+            status_code=502, detail="Expert pipeline violated its execution contract."
+        ) from exc
 
 
 @app.get("/routing/{task}")

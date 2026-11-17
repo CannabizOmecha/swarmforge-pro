@@ -8,13 +8,16 @@ from aegis.agent_runtime import (
     AgentCapabilityError,
     AgentContractError,
     AgentInputError,
+    AgentPipelineRequest,
     AgentStatus,
     AgentTask,
     AgentTaskType,
     AgentToolbox,
     Capability,
     DeterministicMockAdapter,
+    candidate_digest,
     execute_agent_task,
+    execute_validation_pipeline,
 )
 
 
@@ -60,19 +63,18 @@ def test_validator_is_separate_and_confirms_only_explicit_fixture_violation():
 
 
 def test_critic_is_distinct_and_checks_candidate_contract():
+    unsigned = {
+        "property_id": "AUTHZ-001",
+        "expected": "deny",
+        "actual": "allow",
+        "scope_id": "local-synthetic",
+    }
+    candidate = {**unsigned, "candidate_sha256": candidate_digest(unsigned)}
     result = asyncio.run(
         execute_agent_task(
             AgentTask(
                 task_type=AgentTaskType.CRITIQUE_CANDIDATE,
-                payload={
-                    "candidate": {
-                        "property_id": "AUTHZ-001",
-                        "expected": "deny",
-                        "actual": "allow",
-                        "evidence_id": "evidence-123",
-                        "scope_id": "local-synthetic",
-                    }
-                },
+                payload={"candidate": candidate},
             )
         )
     )
@@ -184,3 +186,86 @@ def test_adapter_failure_abstains_without_exposing_exception_text():
     assert result.status == AgentStatus.ABSTAINED
     assert result.abstention_reason == "adapter_error"
     assert "sensitive" not in str(result.model_dump())
+
+
+def test_critic_rejects_candidate_digest_tampering():
+    candidate = {
+        "property_id": "AUTHZ-001",
+        "expected": "deny",
+        "actual": "allow",
+        "scope_id": "local-synthetic",
+        "candidate_sha256": "0" * 64,
+    }
+    result = asyncio.run(
+        execute_agent_task(
+            AgentTask(
+                task_type=AgentTaskType.CRITIQUE_CANDIDATE,
+                payload={"candidate": candidate},
+            )
+        )
+    )
+    assert result.output["accepted"] is False
+    assert "candidate_digest_mismatch" in result.output["issues"]
+
+
+def test_three_expert_pipeline_runs_generator_validator_and_independent_critic():
+    result = asyncio.run(
+        execute_validation_pipeline(
+            AgentPipelineRequest(
+                fixture_id="authz-deny-v1",
+                observed_decision="allow",
+            )
+        )
+    )
+    assert result.status == AgentStatus.COMPLETED
+    assert [stage.expert_name for stage in result.stages] == [
+        "test_generator",
+        "security_validator",
+        "critic",
+    ]
+    assert result.summary["violation_confirmed"] is True
+    assert result.summary["critic_accepted"] is True
+    assert result.summary["persistence"] == "not_performed"
+
+
+def test_three_expert_pipeline_accepts_expected_deny_without_finding():
+    result = asyncio.run(
+        execute_validation_pipeline(
+            AgentPipelineRequest(
+                fixture_id="authz-deny-v1",
+                observed_decision="deny",
+            )
+        )
+    )
+    assert result.status == AgentStatus.COMPLETED
+    assert result.summary["security_property_passed"] is True
+    assert result.summary["violation_confirmed"] is False
+
+
+def test_pipeline_stops_when_independent_validator_abstains():
+    class AbstainingValidator(DeterministicMockAdapter):
+        async def execute(self, payload, tools):
+            return AdapterResponse(
+                status=AgentStatus.ABSTAINED,
+                abstention_reason="test_abstention",
+            )
+
+    result = asyncio.run(
+        execute_validation_pipeline(
+            AgentPipelineRequest(
+                fixture_id="authz-deny-v1",
+                observed_decision="allow",
+            ),
+            {
+                "test_generator": DeterministicMockAdapter("test_generator"),
+                "security_validator": AbstainingValidator("security_validator"),
+                "critic": DeterministicMockAdapter("critic"),
+            },
+        )
+    )
+    assert result.status == AgentStatus.ABSTAINED
+    assert [stage.expert_name for stage in result.stages] == [
+        "test_generator",
+        "security_validator",
+    ]
+    assert result.summary["stopped_after"] == "security_validator"
