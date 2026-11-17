@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3 — cross-run finding deduplication
+- Added versioned semantic finding fingerprints over property, state, impact, expected behavior, and observed behavior.
+- Added transactional finding-group aggregation with first/last-seen metadata and occurrence counts.
+- Preserved every original finding and its evidence; deduplication is an index/roll-up, not deletion or evidence merging.
+- Added a bounded finding-group API and aggregate metric.
+- Added tests proving run-specific IDs do not prevent deduplication and distinct occurrences/evidence remain available.
+
+
 ## 0.6.2 — local audit integrity
 - Added append-only SQLite audit events with update/delete guards and a SHA-256 hash chain.
 - Recorded workflow acceptance, transitions, attempts, execution failures, rejection, commit, resume requests, and agent/pipeline outcomes.

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from .dedup import finding_fingerprint
 from .models import EvidenceRecord, Finding, RunRecord
 
 WORKFLOW_TRANSITIONS = {
@@ -76,6 +77,22 @@ class Store:
                 CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS findings (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS evidence (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS finding_groups (
+                    fingerprint TEXT PRIMARY KEY,
+                    property_id TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    security_impact TEXT NOT NULL,
+                    expected TEXT NOT NULL,
+                    actual TEXT NOT NULL,
+                    first_seen_at TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    occurrence_count INTEGER NOT NULL CHECK (occurrence_count >= 1),
+                    first_run_id TEXT NOT NULL,
+                    last_run_id TEXT NOT NULL,
+                    last_finding_id TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS finding_groups_last_seen
+                    ON finding_groups(last_seen_at DESC);
                 CREATE TABLE IF NOT EXISTS idempotency (
                     key TEXT PRIMARY KEY,
                     fingerprint TEXT NOT NULL,
@@ -526,6 +543,36 @@ class Store:
                 "INSERT INTO evidence VALUES (?, ?)",
                 [(item.evidence_id, item.model_dump_json()) for item in evidence],
             )
+            for item in findings:
+                fingerprint = finding_fingerprint(item)
+                seen_at = item.created_at.isoformat()
+                db.execute(
+                    """
+                    INSERT INTO finding_groups (
+                        fingerprint, property_id, state, security_impact,
+                        expected, actual, first_seen_at, last_seen_at,
+                        occurrence_count, first_run_id, last_run_id, last_finding_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                    ON CONFLICT(fingerprint) DO UPDATE SET
+                        last_seen_at=excluded.last_seen_at,
+                        occurrence_count=finding_groups.occurrence_count + 1,
+                        last_run_id=excluded.last_run_id,
+                        last_finding_id=excluded.last_finding_id
+                    """,
+                    (
+                        fingerprint,
+                        item.property_id,
+                        item.state.value,
+                        item.security_impact,
+                        item.expected,
+                        item.actual,
+                        seen_at,
+                        seen_at,
+                        run.run_id,
+                        run.run_id,
+                        item.finding_id,
+                    ),
+                )
             self._append_audit_event(
                 db,
                 "run.bundle_saved",
@@ -594,6 +641,25 @@ class Store:
             rows = db.execute("SELECT payload FROM findings ORDER BY rowid DESC").fetchall()
         return [json.loads(row["payload"]) for row in rows]
 
+    def list_finding_groups(self, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1 or limit > 500:
+            raise ValueError("Finding group limit must be between 1 and 500.")
+        with self._connect() as db:
+            rows = db.execute(
+                """
+                SELECT * FROM finding_groups
+                ORDER BY last_seen_at DESC, fingerprint ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        groups = []
+        for row in rows:
+            group = dict(row)
+            group["group_id"] = f"fg_{group['fingerprint']}"
+            groups.append(group)
+        return groups
+
     def counts(self) -> dict[str, int]:
         with self._connect() as db:
             return {
@@ -602,4 +668,5 @@ class Store:
                 "evidence": db.execute("SELECT count(*) FROM evidence").fetchone()[0],
                 "workflows": db.execute("SELECT count(*) FROM workflows").fetchone()[0],
                 "audit_events": db.execute("SELECT count(*) FROM audit_events").fetchone()[0],
+                "finding_groups": db.execute("SELECT count(*) FROM finding_groups").fetchone()[0],
             }

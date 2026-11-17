@@ -3,6 +3,7 @@ import sqlite3
 import pytest
 
 from aegis.baseline import is_anomalous, mad, robust_anomaly_score
+from aegis.dedup import finding_fingerprint
 from aegis.engine import canonical_hash, execute_synthetic_run
 from aegis.policy import AuthorizationError, authorize
 from aegis.privacy import minimize_attributes, redact_text
@@ -110,3 +111,11 @@ def test_audit_chain_detects_payload_tampering(tmp_path):
     assert verification["valid"] is False
     assert verification["failed_sequence"] == 1
     assert verification["reason"] == "event_hash_mismatch"
+
+
+def test_finding_fingerprint_ignores_run_specific_identifiers():
+    _, first_findings, _ = execute_synthetic_run("local-synthetic", 10, 7)
+    _, second_findings, _ = execute_synthetic_run("local-synthetic", 10, 8)
+    assert first_findings[0].finding_id != second_findings[0].finding_id
+    assert first_findings[0].run_id != second_findings[0].run_id
+    assert finding_fingerprint(first_findings[0]) == finding_fingerprint(second_findings[0])

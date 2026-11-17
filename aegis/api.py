@@ -271,6 +271,11 @@ def verify_evidence(evidence_id: str):
     }
 
 
+@app.get("/finding-groups")
+def get_finding_groups(limit: int = Query(default=100, ge=1, le=500)):
+    return {"groups": store.list_finding_groups(limit)}
+
+
 @app.get("/findings")
 def get_findings():
     return {"findings": store.list_findings()}

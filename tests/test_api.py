@@ -201,3 +201,37 @@ def test_audit_events_endpoint_bounds_limit(tmp_path, monkeypatch):
     client = client_for(tmp_path, monkeypatch)
     assert client.get("/audit/events?limit=0").status_code == 422
     assert client.get("/audit/events?limit=501").status_code == 422
+
+
+def test_cross_run_finding_dedup_preserves_occurrences_and_groups(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    first = client.post(
+        "/runs", json={"scope_id": "local-synthetic", "batch_size": 10, "seed": 7}
+    )
+    second = client.post(
+        "/runs", json={"scope_id": "local-synthetic", "batch_size": 10, "seed": 8}
+    )
+    assert first.status_code == 200
+    assert second.status_code == 200
+
+    # Deduplication is an index over findings, not deletion or evidence merging.
+    assert client.get("/findings").json()["findings"]
+    assert len(client.get("/findings").json()["findings"]) == 2
+    assert len(first.json()["evidence"]) == 1
+    assert len(second.json()["evidence"]) == 1
+
+    groups = client.get("/finding-groups").json()["groups"]
+    assert len(groups) == 1
+    group = groups[0]
+    assert group["occurrence_count"] == 2
+    assert group["first_run_id"] == first.json()["run"]["run_id"]
+    assert group["last_run_id"] == second.json()["run"]["run_id"]
+    assert group["property_id"] == "AUTHZ-001"
+    assert group["state"] == "validated"
+    assert client.get("/metrics").json()["finding_groups"] == 1
+
+
+def test_finding_group_listing_limit_is_bounded(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    assert client.get("/finding-groups?limit=0").status_code == 422
+    assert client.get("/finding-groups?limit=501").status_code == 422
