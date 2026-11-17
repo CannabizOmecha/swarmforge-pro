@@ -5,13 +5,15 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Implementation commit: `673b16d5375f022ddea4c240d173da3bf010a72b`
-- CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329
+- Latest full-branch verification commit: `5514e2985f98fdeed8bb0705f2714ff158370da0`
+- CI run #34: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136561622
 - Result: PASS.
 - Verified job steps: dependency installation, unit/API tests, Python compilation, Ruff lint, and JSON Schema validation all completed successfully.
-- Pytest: 42 tests completed successfully (42 passing test indicators in quiet output; CI quiet configuration is being adjusted to print the numeric summary on subsequent runs).
+- Pytest: `42 passed, 1 warning in 0.83s`. The warning is an upstream Starlette/httpx TestClient deprecation; no project test failed.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
+- Expert runtime implementation commit: `673b16d5375f022ddea4c240d173da3bf010a72b`
+- CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329 — PASS for the three-stage deterministic expert pipeline.
 - Workflow CI #32: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135889614 — PASS for the first typed runtime increment.
 - Workflow CI #31: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135757865 — FAIL, pytest passed but Ruff flagged a broad exception boundary and import ordering. Both were corrected.
 - Workflow CI #30: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135594423 — FAIL, one test showed that the critic's review capability was not recorded by the toolbox. The review operation was moved behind the capability-checked toolbox method and regression-tested.
