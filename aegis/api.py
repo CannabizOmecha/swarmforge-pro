@@ -4,10 +4,10 @@ from fastapi import FastAPI, HTTPException
 from jsonschema.exceptions import ValidationError
 
 from .agent_runtime import (
+    EXPERT_CAPABILITIES,
     AgentContractError,
     AgentInputError,
     AgentTask,
-    EXPERT_CAPABILITIES,
     execute_agent_task,
 )
 from .engine import canonical_hash

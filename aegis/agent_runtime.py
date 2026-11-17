@@ -282,7 +282,7 @@ async def execute_agent_task(
         raise
     except ValidationError as exc:
         raise AgentContractError("Adapter returned an invalid result schema.") from exc
-    except Exception:
+    except Exception:  # noqa: BLE001 - adapter boundary fails closed to abstention.
         return AgentResult(
             task_id=task.task_id,
             task_type=task.task_type,
