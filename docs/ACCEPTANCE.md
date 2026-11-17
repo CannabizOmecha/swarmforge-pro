@@ -5,10 +5,12 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `f2a2272e20f747820bb6b6471200187b1ad0a722`
-- CI run #44: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44139249172
-- Result: PASS.
-- Pytest: `53 passed, 1 warning in 1.08s`; the warning is an upstream Starlette/httpx TestClient deprecation.
+- Latest verified implementation commit: `315c32528c8961a1394a5d5b0222086cb7f26372`
+- CI run #47: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140524005
+- Result: PASS (run completed 2026-11-17 17:46:09 UTC).
+- Pytest: `56 passed, 1 warning in 1.10s`; the warning is an upstream Starlette/httpx TestClient deprecation.
+- Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; OPA/Rego: `PASS: 9/9`.
+- CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
 - Policy manifest: verified policy version 1.0.0 and SHA-256 `50a42b6d44bd45eb53285c846cd388e9693b146611f1fabbcc63afc4c9204759`.
@@ -49,6 +51,8 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Independent validator and critic roles | `tests/test_agents.py::test_validator_is_separate_and_confirms_only_explicit_fixture_violation`; three-stage pipeline tests | PASS |
 | Candidate digest integrity and tamper detection | `tests/test_agents.py::test_critic_rejects_candidate_digest_tampering` | PASS |
 | Sequential three-expert orchestration and stop-on-abstain | `tests/test_agents.py` pipeline tests; `tests/test_api.py::test_agent_pipeline_endpoint_runs_three_independent_experts` | PASS |
+| Cross-run finding grouping with case-sensitive semantic fingerprints; all original findings/evidence retained | `tests/test_core.py::test_finding_fingerprint_ignores_run_specific_identifiers`; `tests/test_api.py::test_cross_run_finding_dedup_preserves_occurrences_and_groups`; `test_finding_group_listing_limit_is_bounded` | PASS |
+| Historical finding-group backfill | No migration/backfill implemented; existing pre-feature findings remain individually queryable but are not included in groups | NOT IMPLEMENTED |
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
 | Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |
