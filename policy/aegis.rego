@@ -2,6 +2,8 @@ package aegis.authorization
 
 default allow := false
 
+policy_version := "1.0.0"
+
 # The policy accepts exactly the four fields emitted by the local policy adapter.
 # Extra fields are rejected so a caller cannot smuggle target or credential data.
 allow if {

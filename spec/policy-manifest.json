@@ -1,0 +1,8 @@
+{
+  "policy_id": "aegis.authorization",
+  "policy_version": "1.0.0",
+  "rego_language_version": "v1",
+  "opa_cli_version": "1.22.4",
+  "policy_path": "policy/aegis.rego",
+  "policy_sha256": "50a42b6d44bd45eb53285c846cd388e9693b146611f1fabbcc63afc4c9204759"
+}

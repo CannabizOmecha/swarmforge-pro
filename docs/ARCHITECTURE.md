@@ -15,6 +15,9 @@ Task type, not caller-supplied expert name, determines routing. The test generat
 
 The three-stage validation pipeline is sequential because each stage depends on the prior stage's output. It is an in-memory deterministic demonstration and does not persist findings or evidence. The current adapters are mocks; no live LLM provider is connected.
 
+## Governance policy
+The Python application enforces the immutable local-synthetic scope registry at runtime. The Rego policy is versioned, SHA-256 pinned in a manifest, and compiled/tested independently in CI using a pinned OPA CLI binary. OPA is not yet called by the running API; the tests provide policy-contract parity evidence, not a claim of runtime OPA enforcement.
+
 ## Persistence
 SQLite is suitable for a single-node MVP. Production multi-worker deployments require a managed relational database, general migrations, transaction strategy, access controls, backup/restore tests, and a separate immutable evidence store.
 

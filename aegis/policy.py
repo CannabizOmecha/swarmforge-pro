@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Mapping
+
+POLICY_VERSION = "1.0.0"
+ALLOWED_OPERATIONS = frozenset({"generate", "execute", "observe", "validate", "evidence"})
 
 
 @dataclass(frozen=True)
@@ -10,19 +15,44 @@ class Scope:
     network_enabled: bool = False
 
 
-SCOPES = {
-    "local-synthetic": Scope(
-        scope_id="local-synthetic",
-        environment="synthetic-fixtures",
-        allowed_operations=frozenset({"generate", "execute", "observe", "validate", "evidence"}),
-        max_batch_size=200,
-        network_enabled=False,
-    )
-}
+SCOPES: Mapping[str, Scope] = MappingProxyType(
+    {
+        "local-synthetic": Scope(
+            scope_id="local-synthetic",
+            environment="synthetic-fixtures",
+            allowed_operations=ALLOWED_OPERATIONS,
+            max_batch_size=200,
+            network_enabled=False,
+        )
+    }
+)
 
 
 class AuthorizationError(PermissionError):
     pass
+
+
+def validate_scope_registry(scopes: Mapping[str, Scope] | None = None) -> bool:
+    registry = SCOPES if scopes is None else scopes
+    if set(registry) != {"local-synthetic"}:
+        raise ValueError("Scope registry must contain only local-synthetic.")
+    for key, scope in registry.items():
+        if key != scope.scope_id:
+            raise ValueError("Scope registry key does not match its scope identifier.")
+        if scope.environment != "synthetic-fixtures":
+            raise ValueError("Only the synthetic fixture environment is supported.")
+        if scope.network_enabled:
+            raise ValueError("Network-enabled scopes are prohibited.")
+        if not scope.allowed_operations or not scope.allowed_operations.issubset(
+            ALLOWED_OPERATIONS
+        ):
+            raise ValueError("Scope contains an unsupported operation.")
+        if scope.max_batch_size < 1 or scope.max_batch_size > 200:
+            raise ValueError("Scope batch budget is outside the policy envelope.")
+    return True
+
+
+validate_scope_registry()
 
 
 def authorize(scope_id: str, operation: str, requested_batch: int = 1) -> Scope:

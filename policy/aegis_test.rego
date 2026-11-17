@@ -2,6 +2,10 @@ package aegis.authorization_test
 
 import data.aegis.authorization
 
+test_policy_version_is_pinned if {
+	authorization.policy_version == "1.0.0"
+}
+
 test_allows_valid_local_synthetic_request if {
 	authorization.allow with input as {
 		"scope_id": "local-synthetic",

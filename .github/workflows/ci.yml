@@ -26,6 +26,8 @@ jobs:
         run: ruff check aegis tests
       - name: Validate JSON schemas and contracts
         run: python -c "from aegis.validation import _validator; _validator('event.schema.json'); _validator('evidence.schema.json'); print('JSON Schema contracts valid')"
+      - name: Verify immutable policy manifest
+        run: python scripts/verify_policy_manifest.py
       - name: Install pinned Open Policy Agent
         run: |
           set -euo pipefail

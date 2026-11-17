@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 — policy integrity and OPA parity
+- Added a versioned Rego policy and a SHA-256 policy manifest verified by CI.
+- Pinned OPA CLI 1.22.4 by the official release asset digest; CI runs Rego formatting, compilation, and positive/negative policy tests.
+- Made the Python scope registry immutable and added validation against the fixed local-synthetic policy envelope.
+- Added matching Python authorization regression tests; Python remains runtime enforcement while OPA is independently compiled and tested in CI.
+
+
 ## 0.6.0 — typed expert runtime and deterministic MoE pipeline
 - Added strict task, payload, adapter-response, and result contracts.
 - Added static task-to-expert routing so API callers cannot select a privileged expert or self-assign capabilities.

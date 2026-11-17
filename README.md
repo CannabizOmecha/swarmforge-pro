@@ -6,7 +6,8 @@ Autonomous, policy-constrained security assurance MVP. It runs deterministic tes
 - Default scope is local-synthetic; no remote target execution is implemented.
 - The API does not accept arbitrary URLs, shell commands, credentials, or network destinations.
 - Expert tools expose only fixed, read-only synthetic fixture operations.
-- Scope authorization is checked before a workflow or expert task.
+- Scope authorization is checked before a workflow or expert task; the Python scope registry is immutable and validated at startup.
+- Rego policy is versioned and SHA-256 pinned; CI verifies its manifest and runs OPA format, compile, and positive/negative tests.
 - A candidate anomaly is not a confirmed vulnerability. Confirmation requires an explicit security-property violation.
 - The expert runtime currently uses deterministic mock adapters, not live LLM providers.
 - No autonomous policy changes, external disclosure, production deployment, or destructive remediation.
