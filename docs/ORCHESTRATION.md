@@ -33,6 +33,9 @@ The pipeline does not persist a finding or evidence. Its candidate digest is an 
 - CI installs OPA 1.22.4 from the official static release, verifies its binary digest, checks Rego formatting/compilation, and runs nine positive/negative tests.
 - OPA is not called by the API at runtime; the Rego artifact is independently tested and Python authorization remains authoritative.
 
+## Audit events
+Workflow acceptance, state transitions, attempts, failures, rejection, commit, resume requests, and expert/pipeline outcomes append sanitized events to a local SHA-256 hash chain. Audit events are written in the same transaction as the associated workflow transition or final bundle where applicable. Agent events record task type, expert, status, and capabilities used; raw task payloads are not recorded. GET /audit/verify checks sequence continuity and all hashes. SQLite triggers block normal updates/deletes. This is tamper-evident only; it is not a signature, remote WORM store, or protection against a privileged database administrator.
+
 ## Recovery semantics
 - A client idempotency key is bound to a canonical request fingerprint.
 - Legacy idempotency rows are honored across the workflow migration.

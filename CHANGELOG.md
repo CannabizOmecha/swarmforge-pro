@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2 — local audit integrity
+- Added append-only SQLite audit events with update/delete guards and a SHA-256 hash chain.
+- Recorded workflow acceptance, transitions, attempts, execution failures, rejection, commit, resume requests, and agent/pipeline outcomes.
+- Added bounded audit listing and chain verification endpoints.
+- Added regression tests for append-only enforcement, tamper detection, workflow event coverage, and API audit records.
+- Documented that the local hash chain is not a signed/WORM audit store and is not tamper-proof against a privileged database administrator.
+
+
 ## 0.6.1 — policy integrity and OPA parity
 - Added a versioned Rego policy and a SHA-256 policy manifest verified by CI.
 - Pinned OPA CLI 1.22.4 by the official release asset digest; CI runs Rego formatting, compilation, and positive/negative policy tests.

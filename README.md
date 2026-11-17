@@ -43,6 +43,8 @@ ruff check aegis tests
 - GET /evidence/{evidence_id}/verify
 - GET /findings
 - GET /metrics
+- GET /audit/events?limit=100 — list bounded sanitized audit events
+- GET /audit/verify — verify the local append-only audit hash chain
 
 The expert pipeline is an in-memory demonstration and does not create persisted findings or evidence. The normal synthetic run workflow remains the persisted evidence-producing path.
 

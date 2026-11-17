@@ -18,6 +18,9 @@ The three-stage validation pipeline is sequential because each stage depends on 
 ## Governance policy
 The Python application enforces the immutable local-synthetic scope registry at runtime. The Rego policy is versioned, SHA-256 pinned in a manifest, and compiled/tested independently in CI using a pinned OPA CLI binary. OPA is not yet called by the running API; the tests provide policy-contract parity evidence, not a claim of runtime OPA enforcement.
 
+## Audit integrity
+Security-relevant workflow and expert events are appended to a local SQLite audit table. Each event hash commits to its sequence, identifier, type, subject, canonical payload, timestamp, and prior event hash. SQLite triggers reject ordinary UPDATE/DELETE operations; the verification endpoint detects payload, ordering, or chain tampering. This is tamper-evident, not a cryptographically signed or WORM store; a privileged database administrator can remove triggers and rewrite the database. Production requires external immutable retention and managed signing keys.
+
 ## Persistence
 SQLite is suitable for a single-node MVP. Production multi-worker deployments require a managed relational database, general migrations, transaction strategy, access controls, backup/restore tests, and a separate immutable evidence store.
 

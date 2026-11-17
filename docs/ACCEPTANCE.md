@@ -5,18 +5,17 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `2c4429a0c055b2794636b1af773ff307e87c0e3f`
-- CI run #42: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138390159 — PASS, final acceptance/orchestration documentation verification.
-- CI run #41: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138196351
+- Latest verified implementation commit: `f2a2272e20f747820bb6b6471200187b1ad0a722`
+- CI run #44: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44139249172
 - Result: PASS.
-- Pytest: `50 passed, 1 warning in 0.85s`; the warning is an upstream Starlette/httpx TestClient deprecation.
+- Pytest: `53 passed, 1 warning in 1.08s`; the warning is an upstream Starlette/httpx TestClient deprecation.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
 - Policy manifest: verified policy version 1.0.0 and SHA-256 `50a42b6d44bd45eb53285c846cd388e9693b146611f1fabbcc63afc4c9204759`.
 - OPA CLI: pinned 1.22.4 binary digest verified; Rego format and compilation checks passed; Rego tests: `9/9`.
-- CI run #38: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44137351212 — PASS, initial OPA integration, 8/8 Rego tests.
-- CI run #35: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136717247 — PASS, 42 Python tests.
-- CI run #34: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136561622 — PASS, 42 Python tests.
+- Audit chain: append-only triggers, hash-chain verification, tamper detection, workflow event recording, and agent/pipeline audit API tests passed.
+- CI run #41: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138196351 — PASS, policy manifest and OPA verification.
+- CI run #38: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44137351212 — PASS, initial OPA integration.
 - CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329 — PASS, deterministic three-expert pipeline.
 - CI run #32: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135889614 — PASS, first typed runtime increment.
 - CI run #31: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135757865 — FAIL, pytest passed but Ruff flagged a broad exception boundary and import ordering; corrected.
@@ -53,12 +52,13 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
 | Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |
+| Append-only hash-chained audit log and tamper detection | tests/test_core.py audit append-only/tamper tests; tests/test_workflow.py workflow event test; tests/test_api.py audit endpoints | PASS |
 | Versioned Rego policy and SHA-256 manifest verification | scripts/verify_policy_manifest.py; CI #41 | PASS |
 | OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
 | OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
 | Cross-run finding deduplication | Not implemented | NOT IMPLEMENTED |
 | Drift/calibration/known-defect/benign-variation benchmarks | Not implemented | NOT IMPLEMENTED |
-| OpenTelemetry traces and structured audit backend | Not implemented | NOT IMPLEMENTED |
+| OpenTelemetry traces and remote audit backend | Not implemented; local SQLite hash-chain audit log is implemented separately | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
 | API authentication and multi-tenant isolation | Not implemented; loopback binding required | BLOCKED before any non-loopback exposure |
