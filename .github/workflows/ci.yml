@@ -36,6 +36,6 @@ jobs:
           "$RUNNER_TEMP/opa" version
       - name: Format, compile, and test Rego policy
         run: |
-          "$RUNNER_TEMP/opa" fmt --diff policy || true
+          "$RUNNER_TEMP/opa" fmt --fail policy
           "$RUNNER_TEMP/opa" check policy
           "$RUNNER_TEMP/opa" test policy -v
