@@ -1,6 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from collections.abc import Mapping
 
 POLICY_VERSION = "1.0.0"
 ALLOWED_OPERATIONS = frozenset({"generate", "execute", "observe", "validate", "evidence"})
