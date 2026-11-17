@@ -112,6 +112,8 @@ def test_toolbox_denies_ungranted_capability():
     tools = AgentToolbox(frozenset({Capability.READ_SYNTHETIC_FIXTURE}))
     with pytest.raises(AgentCapabilityError):
         tools.validate_assertion("authz-deny-v1", "allow")
+    with pytest.raises(AgentCapabilityError):
+        tools.review_candidate({"scope_id": "local-synthetic"})
 
 
 def test_unknown_fixture_is_rejected():

@@ -162,6 +162,14 @@ class AgentToolbox:
             "scope_id": "local-synthetic",
         }
 
+    def review_candidate(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        self._require(Capability.REVIEW_CANDIDATE)
+        required = {"property_id", "expected", "actual", "evidence_id", "scope_id"}
+        issues = sorted(required.difference(candidate))
+        if candidate.get("scope_id") != "local-synthetic":
+            issues.append("scope_not_local_synthetic")
+        return {"accepted": not issues, "issues": issues}
+
 
 class ExpertAdapter(Protocol):
     name: str
@@ -200,15 +208,8 @@ class DeterministicMockAdapter:
 
         if self.name == "critic":
             typed = CritiqueCandidatePayload.model_validate(payload)
-            candidate = typed.candidate
-            required = {"property_id", "expected", "actual", "evidence_id", "scope_id"}
-            issues = sorted(required.difference(candidate))
-            if candidate.get("scope_id") != "local-synthetic":
-                issues.append("scope_not_local_synthetic")
-            return AdapterResponse(
-                status=AgentStatus.COMPLETED,
-                output={"accepted": not issues, "issues": issues},
-            )
+            result = tools.review_candidate(typed.candidate)
+            return AdapterResponse(status=AgentStatus.COMPLETED, output=result)
 
         return AdapterResponse(status=AgentStatus.ABSTAINED, abstention_reason="unsupported_task")
 
