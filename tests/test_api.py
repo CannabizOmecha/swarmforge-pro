@@ -39,6 +39,9 @@ def test_agent_task_endpoint_runs_only_bounded_synthetic_fixture(tmp_path, monke
     assert result["status"] == "completed"
     assert result["output"]["violation_confirmed"] is True
     assert result["adapter_mode"] == "deterministic_mock"
+    audit = client.get("/audit/events").json()["events"]
+    assert any(event["event_type"] == "agent.task.completed" for event in audit)
+    assert client.get("/audit/verify").json()["valid"] is True
 
 
 def test_agent_task_endpoint_rejects_untrusted_payloads(tmp_path, monkeypatch):
@@ -77,6 +80,9 @@ def test_agent_pipeline_endpoint_runs_three_independent_experts(tmp_path, monkey
     assert result["summary"]["violation_confirmed"] is True
     assert result["summary"]["critic_accepted"] is True
     assert result["summary"]["persistence"] == "not_performed"
+    audit = client.get("/audit/events").json()["events"]
+    assert any(event["event_type"] == "agent.pipeline.completed" for event in audit)
+    assert client.get("/audit/verify").json()["valid"] is True
 
 
 def test_agent_pipeline_endpoint_rejects_non_synthetic_scope(tmp_path, monkeypatch):
@@ -189,3 +195,9 @@ def test_unknown_scope_and_invalid_request_are_rejected(tmp_path, monkeypatch):
     unknown = client.get("/runs/not-found")
     assert unknown.status_code == 404
     assert client.get("/evidence/not-found/verify").status_code == 404
+
+
+def test_audit_events_endpoint_bounds_limit(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    assert client.get("/audit/events?limit=0").status_code == 422
+    assert client.get("/audit/events?limit=501").status_code == 422

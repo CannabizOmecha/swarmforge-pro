@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from jsonschema.exceptions import ValidationError
 
 from .agent_runtime import (
@@ -71,6 +71,17 @@ def agents():
 async def run_agent_task(request: AgentTask):
     try:
         result = await execute_agent_task(request)
+        store.append_audit_event(
+            f"agent.task.{result.status.value}",
+            str(result.task_id),
+            {
+                "task_type": result.task_type.value,
+                "expert_name": result.expert_name,
+                "status": result.status.value,
+                "capabilities_used": [item.value for item in result.capabilities_used],
+                "adapter_mode": result.adapter_mode,
+            },
+        )
         return result.model_dump(mode="json")
     except AgentInputError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -82,6 +93,16 @@ async def run_agent_task(request: AgentTask):
 async def run_agent_validation_pipeline(request: AgentPipelineRequest):
     try:
         result = await execute_validation_pipeline(request)
+        store.append_audit_event(
+            f"agent.pipeline.{result.status.value}",
+            str(result.pipeline_id),
+            {
+                "scope_id": request.scope_id,
+                "stage_experts": [stage.expert_name for stage in result.stages],
+                "stage_statuses": [stage.status.value for stage in result.stages],
+                "adapter_mode": result.adapter_mode,
+            },
+        )
         return result.model_dump(mode="json")
     except AgentInputError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -253,6 +274,16 @@ def verify_evidence(evidence_id: str):
 @app.get("/findings")
 def get_findings():
     return {"findings": store.list_findings()}
+
+
+@app.get("/audit/verify")
+def verify_audit_chain():
+    return store.verify_audit_chain()
+
+
+@app.get("/audit/events")
+def get_audit_events(limit: int = Query(default=100, ge=1, le=500)):
+    return {"events": store.list_audit_events(limit)}
 
 
 @app.get("/metrics")

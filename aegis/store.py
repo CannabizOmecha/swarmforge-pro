@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from collections.abc import Iterator
@@ -7,6 +8,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from .models import EvidenceRecord, Finding, RunRecord
 
@@ -18,6 +20,27 @@ WORKFLOW_TRANSITIONS = {
     "exhausted": set(),
     "committed": set(),
 }
+
+AUDIT_GENESIS = "0" * 64
+AUDIT_EVENT_TYPES = frozenset(
+    {
+        "workflow.accepted",
+        "workflow.state_transition",
+        "workflow.attempt_started",
+        "workflow.execution_failed",
+        "workflow.exhausted",
+        "workflow.rejected",
+        "workflow.committed",
+        "workflow.resume_requested",
+        "run.bundle_saved",
+        "agent.task.completed",
+        "agent.task.abstained",
+        "agent.task.rejected",
+        "agent.pipeline.completed",
+        "agent.pipeline.abstained",
+        "agent.pipeline.rejected",
+    }
+)
 
 
 class WorkflowStateConflict(RuntimeError):
@@ -70,7 +93,191 @@ class Store:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS audit_events (
+                    sequence INTEGER PRIMARY KEY,
+                    event_id TEXT NOT NULL UNIQUE,
+                    event_type TEXT NOT NULL,
+                    subject_id TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    previous_hash TEXT NOT NULL,
+                    event_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE TRIGGER IF NOT EXISTS audit_events_no_update
+                BEFORE UPDATE ON audit_events
+                BEGIN
+                    SELECT RAISE(ABORT, 'audit events are append-only');
+                END;
+                CREATE TRIGGER IF NOT EXISTS audit_events_no_delete
+                BEFORE DELETE ON audit_events
+                BEGIN
+                    SELECT RAISE(ABORT, 'audit events are append-only');
+                END;
             """)
+
+    @staticmethod
+    def _audit_hash(
+        sequence: int,
+        event_id: str,
+        event_type: str,
+        subject_id: str,
+        payload: str,
+        previous_hash: str,
+        created_at: str,
+    ) -> str:
+        canonical = json.dumps(
+            {
+                "sequence": sequence,
+                "event_id": event_id,
+                "event_type": event_type,
+                "subject_id": subject_id,
+                "payload": payload,
+                "previous_hash": previous_hash,
+                "created_at": created_at,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
+
+    def _append_audit_event(
+        self,
+        db: sqlite3.Connection,
+        event_type: str,
+        subject_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        if event_type not in AUDIT_EVENT_TYPES:
+            raise ValueError("Unsupported audit event type.")
+        if not subject_id or len(subject_id) > 128:
+            raise ValueError("Audit subject identifier is invalid.")
+        encoded_payload = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        if len(encoded_payload.encode("utf-8")) > 4096:
+            raise ValueError("Audit event payload exceeds its size budget.")
+        if not db.in_transaction:
+            db.execute("BEGIN IMMEDIATE")
+        last = db.execute(
+            "SELECT sequence, event_hash FROM audit_events ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()
+        sequence = 1 if last is None else int(last["sequence"]) + 1
+        previous_hash = AUDIT_GENESIS if last is None else last["event_hash"]
+        event_id = str(uuid4())
+        created_at = datetime.now(UTC).isoformat()
+        event_hash = self._audit_hash(
+            sequence,
+            event_id,
+            event_type,
+            subject_id,
+            encoded_payload,
+            previous_hash,
+            created_at,
+        )
+        db.execute(
+            """
+            INSERT INTO audit_events (
+                sequence, event_id, event_type, subject_id, payload,
+                previous_hash, event_hash, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                sequence,
+                event_id,
+                event_type,
+                subject_id,
+                encoded_payload,
+                previous_hash,
+                event_hash,
+                created_at,
+            ),
+        )
+        return {
+            "sequence": sequence,
+            "event_id": event_id,
+            "event_type": event_type,
+            "subject_id": subject_id,
+            "payload": payload,
+            "previous_hash": previous_hash,
+            "event_hash": event_hash,
+            "created_at": created_at,
+        }
+
+    def append_audit_event(
+        self, event_type: str, subject_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        with self._connect() as db:
+            return self._append_audit_event(db, event_type, subject_id, payload)
+
+    def verify_audit_chain(self) -> dict[str, Any]:
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT * FROM audit_events ORDER BY sequence ASC"
+            ).fetchall()
+        previous_hash = AUDIT_GENESIS
+        verified_count = 0
+        expected_sequence = 1
+        for row in rows:
+            sequence = int(row["sequence"])
+            if sequence != expected_sequence:
+                return {
+                    "valid": False,
+                    "event_count": len(rows),
+                    "verified_count": verified_count,
+                    "failed_sequence": sequence,
+                    "reason": "sequence_gap",
+                }
+            if row["previous_hash"] != previous_hash:
+                return {
+                    "valid": False,
+                    "event_count": len(rows),
+                    "verified_count": verified_count,
+                    "failed_sequence": sequence,
+                    "reason": "previous_hash_mismatch",
+                }
+            expected = self._audit_hash(
+                sequence,
+                row["event_id"],
+                row["event_type"],
+                row["subject_id"],
+                row["payload"],
+                row["previous_hash"],
+                row["created_at"],
+            )
+            if expected != row["event_hash"]:
+                return {
+                    "valid": False,
+                    "event_count": len(rows),
+                    "verified_count": verified_count,
+                    "failed_sequence": sequence,
+                    "reason": "event_hash_mismatch",
+                }
+            previous_hash = row["event_hash"]
+            verified_count += 1
+            expected_sequence += 1
+        return {
+            "valid": True,
+            "event_count": len(rows),
+            "verified_count": verified_count,
+            "failed_sequence": None,
+            "reason": None,
+            "last_hash": previous_hash,
+        }
+
+    def list_audit_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        if limit < 1 or limit > 500:
+            raise ValueError("Audit event limit must be between 1 and 500.")
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT * FROM audit_events ORDER BY sequence DESC LIMIT ?", (limit,)
+            ).fetchall()
+        events = []
+        for row in rows:
+            event = dict(row)
+            event["payload"] = json.loads(event["payload"])
+            events.append(event)
+        return events
 
     def create_workflow(
         self,
@@ -97,6 +304,12 @@ class Store:
                     now,
                     now,
                 ),
+            )
+            self._append_audit_event(
+                db,
+                "workflow.accepted",
+                workflow_id,
+                {"state": "accepted", "request_fingerprint": request_fingerprint},
             )
 
     @staticmethod
@@ -146,7 +359,14 @@ class Store:
                 """,
                 (next_state, encoded_payload, now, workflow_id, expected_state),
             )
-            if cursor.rowcount != 1:
+            if cursor.rowcount == 1:
+                self._append_audit_event(
+                    db,
+                    "workflow.state_transition",
+                    workflow_id,
+                    {"from_state": expected_state, "to_state": next_state},
+                )
+            else:
                 row = db.execute(
                     "SELECT state FROM workflows WHERE id=?", (workflow_id,)
                 ).fetchone()
@@ -177,6 +397,12 @@ class Store:
                     "SELECT attempt_count FROM workflows WHERE id=?", (workflow_id,)
                 ).fetchone()
                 attempt_count = int(row["attempt_count"])
+                self._append_audit_event(
+                    db,
+                    "workflow.attempt_started",
+                    workflow_id,
+                    {"attempt_count": attempt_count},
+                )
             else:
                 row = db.execute(
                     "SELECT state, attempt_count FROM workflows WHERE id=?", (workflow_id,)
@@ -190,6 +416,12 @@ class Store:
                         WHERE id=? AND state='authorized'
                         """,
                         (now, workflow_id),
+                    )
+                    self._append_audit_event(
+                        db,
+                        "workflow.exhausted",
+                        workflow_id,
+                        {"attempt_count": int(row["attempt_count"]), "reason": "retry_budget_exhausted"},
                     )
                     exhausted = True
                 else:
@@ -214,6 +446,23 @@ class Store:
                 """,
                 (error_code, now, workflow_id),
             )
+            row = db.execute(
+                "SELECT state, attempt_count FROM workflows WHERE id=?", (workflow_id,)
+            ).fetchone()
+            if row is not None:
+                self._append_audit_event(
+                    db,
+                    "workflow.execution_failed",
+                    workflow_id,
+                    {"error_code": error_code, "state": row["state"], "attempt_count": row["attempt_count"]},
+                )
+                if row["state"] == "exhausted":
+                    self._append_audit_event(
+                        db,
+                        "workflow.exhausted",
+                        workflow_id,
+                        {"attempt_count": row["attempt_count"], "reason": error_code},
+                    )
         result = self.get_workflow(workflow_id)
         if result is None:
             raise WorkflowStateConflict(f"Workflow {workflow_id} disappeared.")
@@ -230,7 +479,14 @@ class Store:
                 """,
                 (now, workflow_id),
             )
-            if cursor.rowcount != 1:
+            if cursor.rowcount == 1:
+                self._append_audit_event(
+                    db,
+                    "workflow.rejected",
+                    workflow_id,
+                    {"state": "rejected", "reason": "authorization_denied"},
+                )
+            else:
                 row = db.execute(
                     "SELECT state FROM workflows WHERE id=?", (workflow_id,)
                 ).fetchone()
@@ -270,6 +526,12 @@ class Store:
                 "INSERT INTO evidence VALUES (?, ?)",
                 [(item.evidence_id, item.model_dump_json()) for item in evidence],
             )
+            self._append_audit_event(
+                db,
+                "run.bundle_saved",
+                run.run_id,
+                {"finding_count": len(findings), "evidence_count": len(evidence)},
+            )
             if idempotency_key is not None:
                 db.execute(
                     "INSERT INTO idempotency VALUES (?, ?, ?)",
@@ -297,6 +559,12 @@ class Store:
                     raise WorkflowStateConflict(
                         f"Workflow {workflow_id} is not ready for atomic commit."
                     )
+                self._append_audit_event(
+                    db,
+                    "workflow.committed",
+                    workflow_id,
+                    {"run_id": run.run_id, "finding_count": len(findings), "evidence_count": len(evidence)},
+                )
 
     def get_idempotency_result(self, key: str) -> dict[str, Any] | None:
         with self._connect() as db:
@@ -333,4 +601,5 @@ class Store:
                 "findings": db.execute("SELECT count(*) FROM findings").fetchone()[0],
                 "evidence": db.execute("SELECT count(*) FROM evidence").fetchone()[0],
                 "workflows": db.execute("SELECT count(*) FROM workflows").fetchone()[0],
+                "audit_events": db.execute("SELECT count(*) FROM audit_events").fetchone()[0],
             }

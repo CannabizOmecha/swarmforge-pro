@@ -27,6 +27,16 @@ def test_workflow_persists_checkpoints_and_commits_bundle_atomically(tmp_path):
     assert state["stage_payload"]["workflow_id"] == result["workflow_id"]
     assert store.counts()["runs"] == 1
     assert store.counts()["workflows"] == 1
+    audit = store.list_audit_events(100)
+    event_types = {event["event_type"] for event in audit}
+    assert {
+        "workflow.accepted",
+        "workflow.state_transition",
+        "workflow.attempt_started",
+        "run.bundle_saved",
+        "workflow.committed",
+    } <= event_types
+    assert store.verify_audit_chain()["valid"] is True
     assert process_run(store, request()) == result
     assert store.counts()["runs"] == 1
 

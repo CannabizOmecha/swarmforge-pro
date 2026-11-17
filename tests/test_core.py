@@ -72,9 +72,41 @@ def test_store_additive_migration_preserves_existing_tables(tmp_path):
     Store(str(path))
     with sqlite3.connect(path) as db:
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"runs", "findings", "evidence", "idempotency"} <= tables
+    assert {"runs", "findings", "evidence", "idempotency", "audit_events"} <= tables
 
 
 def test_remote_scope_is_not_supported():
     with pytest.raises(AuthorizationError):
         execute_synthetic_run("production", 5, 1)
+
+
+def test_audit_chain_is_append_only_and_verifiable(tmp_path):
+    store = Store(str(tmp_path / "audit.sqlite3"))
+    store.append_audit_event(
+        "agent.task.completed", "task-1", {"status": "completed", "expert": "critic"}
+    )
+    store.append_audit_event(
+        "agent.task.abstained", "task-2", {"status": "abstained", "expert": "critic"}
+    )
+    verification = store.verify_audit_chain()
+    assert verification["valid"] is True
+    assert verification["event_count"] == 2
+    assert len(store.list_audit_events()) == 2
+
+    with sqlite3.connect(store.path) as db:
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute("UPDATE audit_events SET payload='{}' WHERE sequence=1")
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute("DELETE FROM audit_events WHERE sequence=1")
+
+
+def test_audit_chain_detects_payload_tampering(tmp_path):
+    store = Store(str(tmp_path / "audit-tamper.sqlite3"))
+    store.append_audit_event("agent.task.completed", "task-1", {"status": "completed"})
+    with sqlite3.connect(store.path) as db:
+        db.execute("DROP TRIGGER audit_events_no_update")
+        db.execute("UPDATE audit_events SET payload='{}' WHERE sequence=1")
+    verification = store.verify_audit_chain()
+    assert verification["valid"] is False
+    assert verification["failed_sequence"] == 1
+    assert verification["reason"] == "event_hash_mismatch"

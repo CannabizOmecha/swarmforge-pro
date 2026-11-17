@@ -171,6 +171,12 @@ def process_run(store: Store, request: TestRequest) -> dict[str, Any]:
 
 
 def resume_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
-    if store.get_workflow(workflow_id) is None:
+    workflow = store.get_workflow(workflow_id)
+    if workflow is None:
         raise WorkflowNotFound(workflow_id)
+    store.append_audit_event(
+        "workflow.resume_requested",
+        workflow_id,
+        {"state": workflow["state"]},
+    )
     return _drive_workflow(store, workflow_id)
