@@ -6,6 +6,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 
 - Branch: `aegis-moe-foundation`
 - Latest verified implementation commit: `2c4429a0c055b2794636b1af773ff307e87c0e3f`
+- CI run #42: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138390159 — PASS, final acceptance/orchestration documentation verification.
 - CI run #41: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138196351
 - Result: PASS.
 - Pytest: `50 passed, 1 warning in 0.85s`; the warning is an upstream Starlette/httpx TestClient deprecation.
@@ -51,8 +52,11 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Sequential three-expert orchestration and stop-on-abstain | `tests/test_agents.py` pipeline tests; `tests/test_api.py::test_agent_pipeline_endpoint_runs_three_independent_experts` | PASS |
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
-| Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |\n| Versioned Rego policy and SHA-256 manifest verification | scripts/verify_policy_manifest.py; CI #41 | PASS |\n| OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
-| OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |\n| Cross-run finding deduplication | Not implemented | NOT IMPLEMENTED |
+| Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |
+| Versioned Rego policy and SHA-256 manifest verification | scripts/verify_policy_manifest.py; CI #41 | PASS |
+| OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
+| OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
+| Cross-run finding deduplication | Not implemented | NOT IMPLEMENTED |
 | Drift/calibration/known-defect/benign-variation benchmarks | Not implemented | NOT IMPLEMENTED |
 | OpenTelemetry traces and structured audit backend | Not implemented | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
