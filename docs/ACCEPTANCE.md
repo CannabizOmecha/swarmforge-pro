@@ -5,19 +5,23 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest full-branch verification commit: `5514e2985f98fdeed8bb0705f2714ff158370da0`
-- CI run #34: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136561622
+- Latest verified implementation commit: `2c4429a0c055b2794636b1af773ff307e87c0e3f`
+- CI run #41: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138196351
 - Result: PASS.
-- Verified job steps: dependency installation, unit/API tests, Python compilation, Ruff lint, and JSON Schema validation all completed successfully.
-- Pytest: `42 passed, 1 warning in 0.83s`. The warning is an upstream Starlette/httpx TestClient deprecation; no project test failed.
+- Pytest: `50 passed, 1 warning in 0.85s`; the warning is an upstream Starlette/httpx TestClient deprecation.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
-- Expert runtime implementation commit: `673b16d5375f022ddea4c240d173da3bf010a72b`
-- CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329 — PASS for the three-stage deterministic expert pipeline.
-- Workflow CI #32: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135889614 — PASS for the first typed runtime increment.
-- Workflow CI #31: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135757865 — FAIL, pytest passed but Ruff flagged a broad exception boundary and import ordering. Both were corrected.
-- Workflow CI #30: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135594423 — FAIL, one test showed that the critic's review capability was not recorded by the toolbox. The review operation was moved behind the capability-checked toolbox method and regression-tested.
-- Earlier workflow CI #29: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/43894779810 — PASS for the durable workflow baseline.
+- Policy manifest: verified policy version 1.0.0 and SHA-256 `50a42b6d44bd45eb53285c846cd388e9693b146611f1fabbcc63afc4c9204759`.
+- OPA CLI: pinned 1.22.4 binary digest verified; Rego format and compilation checks passed; Rego tests: `9/9`.
+- CI run #38: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44137351212 — PASS, initial OPA integration, 8/8 Rego tests.
+- CI run #35: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136717247 — PASS, 42 Python tests.
+- CI run #34: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136561622 — PASS, 42 Python tests.
+- CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329 — PASS, deterministic three-expert pipeline.
+- CI run #32: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135889614 — PASS, first typed runtime increment.
+- CI run #31: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135757865 — FAIL, pytest passed but Ruff flagged a broad exception boundary and import ordering; corrected.
+- CI run #30: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135594423 — FAIL, critic capability-use regression; corrected through the scoped toolbox.
+- CI run #39: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138000752 — FAIL, Ruff import-source rule; corrected.
+- CI run #40: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138099718 — FAIL, Ruff import ordering; corrected.
 - Historical CI #7 root cause was a stale test calling the removed Store.save_run method after the transactional save_bundle refactor; this was a test/implementation contract mismatch, not a security finding.
 
 ## Acceptance matrix
@@ -47,8 +51,8 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Sequential three-expert orchestration and stop-on-abstain | `tests/test_agents.py` pipeline tests; `tests/test_api.py::test_agent_pipeline_endpoint_runs_three_independent_experts` | PASS |
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
-| OPA/Rego runtime parity tests | Rego policy exists; OPA CLI not integrated in CI | NOT IMPLEMENTED |
-| Cross-run finding deduplication | Not implemented | NOT IMPLEMENTED |
+| Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |\n| Versioned Rego policy and SHA-256 manifest verification | scripts/verify_policy_manifest.py; CI #41 | PASS |\n| OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
+| OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |\n| Cross-run finding deduplication | Not implemented | NOT IMPLEMENTED |
 | Drift/calibration/known-defect/benign-variation benchmarks | Not implemented | NOT IMPLEMENTED |
 | OpenTelemetry traces and structured audit backend | Not implemented | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |

@@ -27,6 +27,12 @@ Each stage is assigned by task type. The caller cannot choose the expert or requ
 
 The pipeline does not persist a finding or evidence. Its candidate digest is an integrity check on the in-memory candidate, not an evidence identifier. Persistent evidence generation remains in the durable `POST /runs` workflow.
 
+## Governance policy
+- Python authorization is the runtime enforcement boundary and uses an immutable, startup-validated local-synthetic registry.
+- Rego policy version 1.0.0 is SHA-256 pinned by spec/policy-manifest.json.
+- CI installs OPA 1.22.4 from the official static release, verifies its binary digest, checks Rego formatting/compilation, and runs nine positive/negative tests.
+- OPA is not called by the API at runtime; the Rego artifact is independently tested and Python authorization remains authoritative.
+
 ## Recovery semantics
 - A client idempotency key is bound to a canonical request fingerprint.
 - Legacy idempotency rows are honored across the workflow migration.
