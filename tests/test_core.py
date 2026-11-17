@@ -119,3 +119,7 @@ def test_finding_fingerprint_ignores_run_specific_identifiers():
     assert first_findings[0].finding_id != second_findings[0].finding_id
     assert first_findings[0].run_id != second_findings[0].run_id
     assert finding_fingerprint(first_findings[0]) == finding_fingerprint(second_findings[0])
+    case_changed = first_findings[0].model_copy(
+        update={"actual": first_findings[0].actual.upper()}
+    )
+    assert finding_fingerprint(case_changed) != finding_fingerprint(first_findings[0])
