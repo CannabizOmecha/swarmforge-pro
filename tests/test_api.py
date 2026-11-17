@@ -19,7 +19,46 @@ def test_health_scope_and_agent_routing(tmp_path, monkeypatch):
     assert len(scopes) == 1
     assert scopes[0]["scope_id"] == "local-synthetic"
     assert client.get("/routing/run").json()["execution_mode"] == "deterministic"
+    agents = client.get("/agents").json()["agents"]
+    assert any(agent["name"] == "critic" for agent in agents)
     assert client.get("/routing/not-a-task").status_code == 404
+
+
+def test_agent_task_endpoint_runs_only_bounded_synthetic_fixture(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    response = client.post(
+        "/agent-tasks",
+        json={
+            "task_type": "validate_fixture",
+            "payload": {"fixture_id": "authz-deny-v1", "observed_decision": "allow"},
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["expert_name"] == "security_validator"
+    assert result["status"] == "completed"
+    assert result["output"]["violation_confirmed"] is True
+    assert result["adapter_mode"] == "deterministic_mock"
+
+
+def test_agent_task_endpoint_rejects_untrusted_payloads(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    response = client.post(
+        "/agent-tasks",
+        json={
+            "task_type": "inspect_fixture",
+            "payload": {"fixture_id": "authz-deny-v1", "target_url": "https://example.com"},
+        },
+    )
+    assert response.status_code == 422
+    malformed = client.post(
+        "/agent-tasks",
+        json={
+            "task_type": "validate_fixture",
+            "payload": {"fixture_id": "authz-deny-v1", "observed_decision": "execute"},
+        },
+    )
+    assert malformed.status_code == 422
 
 
 def test_run_persistence_and_evidence_verification(tmp_path, monkeypatch):

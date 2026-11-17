@@ -3,6 +3,13 @@ import sqlite3
 from fastapi import FastAPI, HTTPException
 from jsonschema.exceptions import ValidationError
 
+from .agent_runtime import (
+    AgentContractError,
+    AgentInputError,
+    AgentTask,
+    EXPERT_CAPABILITIES,
+    execute_agent_task,
+)
 from .engine import canonical_hash
 from .experts import EXPERTS, route
 from .models import TestRequest
@@ -20,7 +27,7 @@ from .workflow import (
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.5.0",
+    version="0.6.0",
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()
@@ -35,10 +42,38 @@ def health():
 def agents():
     return {
         "agents": [
-            {"name": e.name, "specialties": list(e.specialties), "mode": e.mode}
+            {
+                "name": e.name,
+                "specialties": list(e.specialties),
+                "mode": e.mode,
+                "capabilities": sorted(
+                    capability.value for capability in EXPERT_CAPABILITIES.get(e.name, ())
+                ),
+            }
             for e in EXPERTS
         ]
+        + [
+            {
+                "name": name,
+                "specialties": ["candidate_critique"],
+                "mode": "deterministic",
+                "capabilities": sorted(capability.value for capability in capabilities),
+            }
+            for name, capabilities in EXPERT_CAPABILITIES.items()
+            if name not in {expert.name for expert in EXPERTS}
+        ]
     }
+
+
+@app.post("/agent-tasks")
+async def run_agent_task(request: AgentTask):
+    try:
+        result = await execute_agent_task(request)
+        return result.model_dump(mode="json")
+    except AgentInputError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except AgentContractError as exc:
+        raise HTTPException(status_code=502, detail="Expert adapter violated its execution contract.") from exc
 
 
 @app.get("/routing/{task}")
