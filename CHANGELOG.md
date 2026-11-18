@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.4 — offline anomaly benchmark (verification pending)
+## 0.6.4 — offline anomaly benchmark (CI #52 passed)
 - Added a versioned synthetic benchmark for robust anomaly scoring with nominal cases, benign variation, statistical outliers, zero-dispersion behavior, and missing-baseline abstention.
 - Reports confusion counts, precision, recall, false-positive rate, and accuracy at a configurable threshold.
 - Keeps statistical anomalies separate from explicit security-property violations; the benchmark does not claim vulnerability-detection performance.

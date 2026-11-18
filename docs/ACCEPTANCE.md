@@ -61,7 +61,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
 | OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
 | Cross-run finding deduplication | Versioned semantic fingerprints; transactional occurrence grouping; regression tests preserve case-sensitive semantics and retain original findings/evidence | PASS (CI #46–#48) |
-| Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PENDING CI |
+| Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PASS (CI #52) |
 | OpenTelemetry traces and remote audit backend | Not implemented; local SQLite hash-chain audit log is implemented separately | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
