@@ -6,9 +6,9 @@ security finding without independent security-property validation.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import dataclass
 
 from .baseline import robust_anomaly_score
 

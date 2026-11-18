@@ -80,4 +80,4 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Benchmark contract: `aegis/benchmark.py`; tests: `tests/test_benchmark.py`; documentation: `docs/ANOMALY_BENCHMARK.md`.
 - Labels distinguish statistical anomalies from explicit security-property violations; missing baselines abstain and are excluded from metrics.
 - Threshold sensitivity is tested (2.5 versus 3.5), along with zero-dispersion behavior, metric edge cases, duplicate IDs, and non-finite inputs.
-- Status: PENDING until CI completes for this commit.
+- CI run #51: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44356991496 — FAIL; pytest passed (72 tests) but Ruff rejected import ordering and deprecated `typing.Iterable`; corrected in commit below.
