@@ -60,3 +60,16 @@ pyproject.toml is the single source of dependency constraints. requirements.txt 
 
 ## Design principles
 Fail closed; minimize data at collection; validate persisted contracts; separate anomaly scoring from security validation; preserve content-addressed evidence; version policies and test definitions; never learn away a security invariant.
+
+## Offline anomaly benchmark
+
+The deterministic synthetic benchmark is available without API or network access:
+
+```python
+from aegis.benchmark import DEFAULT_CASES, evaluate_benchmark
+
+report = evaluate_benchmark(DEFAULT_CASES, threshold=3.5)
+print(report.metrics)
+```
+
+It evaluates statistical anomaly scoring against labeled synthetic latency cases and reports precision, recall, false-positive rate, and accuracy. A statistical anomaly is not a security finding; explicit security-property validation remains a separate gate. The benchmark is a smoke/calibration fixture, not a statistically representative production dataset.

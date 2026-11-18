@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 — offline anomaly benchmark (verification pending)
+- Added a versioned synthetic benchmark for robust anomaly scoring with nominal cases, benign variation, statistical outliers, zero-dispersion behavior, and missing-baseline abstention.
+- Reports confusion counts, precision, recall, false-positive rate, and accuracy at a configurable threshold.
+- Keeps statistical anomalies separate from explicit security-property violations; the benchmark does not claim vulnerability-detection performance.
+- Added threshold sensitivity, input validation, and metric edge-case tests.
+
+
 ## 0.6.3 — cross-run finding deduplication
 - Added versioned semantic finding fingerprints over property, state, impact, expected behavior, and observed behavior.
 - Added transactional finding-group aggregation with first/last-seen metadata and occurrence counts.

@@ -61,7 +61,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | OPA/Rego positive and negative policy tests | CI #41 OPA 1.22.4: format, compile, and 9/9 Rego tests; matching Python policy tests | PASS for independently tested policy artifact |
 | OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
 | Cross-run finding deduplication | Versioned semantic fingerprints; transactional occurrence grouping; regression tests preserve case-sensitive semantics and retain original findings/evidence | PASS (CI #46–#48) |
-| Drift/calibration/known-defect/benign-variation benchmarks | Not implemented | NOT IMPLEMENTED |
+| Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PENDING CI |
 | OpenTelemetry traces and remote audit backend | Not implemented; local SQLite hash-chain audit log is implemented separately | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
@@ -72,3 +72,12 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Release gate
 
 Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface until authentication, authorization, secret/key management, external evidence retention, rate limiting, hardened deployment configuration, backup/restore testing, and independent security review are complete. Never enable remote target testing by changing the synthetic scope in code; that requires a separate authorization and threat-model review.
+
+
+## Offline anomaly benchmark increment
+
+- Implementation commit: pending CI verification.
+- Benchmark contract: `aegis/benchmark.py`; tests: `tests/test_benchmark.py`; documentation: `docs/ANOMALY_BENCHMARK.md`.
+- Labels distinguish statistical anomalies from explicit security-property violations; missing baselines abstain and are excluded from metrics.
+- Threshold sensitivity is tested (2.5 versus 3.5), along with zero-dispersion behavior, metric edge cases, duplicate IDs, and non-finite inputs.
+- Status: PENDING until CI completes for this commit.
