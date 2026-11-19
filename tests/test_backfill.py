@@ -1,6 +1,6 @@
-from datetime import UTC, datetime
 import json
 import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError

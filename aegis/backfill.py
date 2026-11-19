@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .dedup import finding_fingerprint
 from .models import Finding
 from .store import Store
 
@@ -43,8 +44,6 @@ def _expected_groups(rows: list[Any]) -> list[dict[str, Any]]:
 
     findings.sort(key=lambda item: (item[0], item[1].finding_id))
     groups: dict[str, dict[str, Any]] = {}
-    from .dedup import finding_fingerprint
-
     for created_at, finding in findings:
         fingerprint = finding_fingerprint(finding)
         timestamp = created_at.isoformat()
