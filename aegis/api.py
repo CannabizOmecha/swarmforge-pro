@@ -29,7 +29,7 @@ from .workflow import (
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.6.2",
+    version="0.6.5",
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()

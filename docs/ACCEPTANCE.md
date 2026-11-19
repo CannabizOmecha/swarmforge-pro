@@ -5,10 +5,10 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `315c32528c8961a1394a5d5b0222086cb7f26372`
-- CI run #47: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140524005
-- Result: PASS (run completed 2026-11-17 17:46:09 UTC).
-- Pytest: `56 passed, 1 warning in 1.10s`; the warning is an upstream Starlette/httpx TestClient deprecation.
+- Latest verified implementation commit: `cc2d697bf0f850f049989315458bffe60e03b041`
+- CI run #53: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44357255300
+- Result: PASS; all job steps completed successfully on 2026-11-18.
+- Pytest, compileall, Ruff, JSON Schema, policy-manifest verification, and OPA/Rego checks all passed.
 - Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; OPA/Rego: `PASS: 9/9`.
 - CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
 - Ruff: `All checks passed!`
@@ -52,7 +52,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Candidate digest integrity and tamper detection | `tests/test_agents.py::test_critic_rejects_candidate_digest_tampering` | PASS |
 | Sequential three-expert orchestration and stop-on-abstain | `tests/test_agents.py` pipeline tests; `tests/test_api.py::test_agent_pipeline_endpoint_runs_three_independent_experts` | PASS |
 | Cross-run finding grouping with case-sensitive semantic fingerprints; all original findings/evidence retained | `tests/test_core.py::test_finding_fingerprint_ignores_run_specific_identifiers`; `tests/test_api.py::test_cross_run_finding_dedup_preserves_occurrences_and_groups`; `test_finding_group_listing_limit_is_bounded` | PASS |
-| Historical finding-group backfill | No migration/backfill implemented; existing pre-feature findings remain individually queryable but are not included in groups | NOT IMPLEMENTED |
+| Historical finding-group backfill | `tests/test_backfill.py`; `aegis.backfill.rebuild_finding_groups` | NOT IMPLEMENTED pending CI verification |
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
 | Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |
@@ -81,3 +81,13 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Labels distinguish statistical anomalies from explicit security-property violations; missing baselines abstain and are excluded from metrics.
 - Threshold sensitivity is tested (2.5 versus 3.5), along with zero-dispersion behavior, metric edge cases, duplicate IDs, and non-finite inputs.
 - CI run #51: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44356991496 — FAIL; pytest passed (72 tests) but Ruff rejected import ordering and deprecated `typing.Iterable`; corrected in commit below.
+
+## Historical finding-group reconciliation increment
+
+- Implementation: `aegis/backfill.py`; CLI: `python -m aegis.backfill --database data/aegis.sqlite3` (dry-run by default).
+- Apply only after reviewing the dry-run: `python -m aegis.backfill --database data/aegis.sqlite3 --apply`.
+- Source of truth: every persisted finding row, validated through the strict Pydantic Finding model. The finding-group table is treated as a rebuildable derived index.
+- Apply mode takes a SQLite `BEGIN IMMEDIATE` lock, validates and aggregates all source rows before replacing the index, and commits the rebuilt index and audit event atomically.
+- Repeated apply is a no-op when the derived index already matches source findings. Invalid or mismatched source records abort the transaction.
+- Regression tests: `tests/test_backfill.py`.
+- CI verification: pending for this implementation commit.

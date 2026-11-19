@@ -34,6 +34,7 @@ AUDIT_EVENT_TYPES = frozenset(
         "workflow.committed",
         "workflow.resume_requested",
         "run.bundle_saved",
+        "finding_groups.rebuilt",
         "agent.task.completed",
         "agent.task.abstained",
         "agent.task.rejected",

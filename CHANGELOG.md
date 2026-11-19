@@ -1,3 +1,10 @@
+## 0.6.5 — historical finding-group reconciliation
+- Added a dry-run-first, explicit-apply backfill for historical findings created before cross-run grouping.
+- Rebuilds the derived finding-group index from validated source findings in one SQLite write transaction; malformed records abort without partial changes.
+- Reconciles pre-existing groups instead of incrementing them blindly; repeated application is idempotent and only changed rebuilds append an audit event.
+- Added tests for historical occurrences, dry-run safety, idempotency, deterministic first/last-seen metadata, and rollback on malformed source data.
+- Added a local CLI; no unauthenticated maintenance endpoint or network capability was introduced.
+
 # Changelog
 
 ## 0.6.4 — offline anomaly benchmark (CI #52 passed)
