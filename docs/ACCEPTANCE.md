@@ -5,10 +5,10 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `cc2d697bf0f850f049989315458bffe60e03b041`
-- CI run #53: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44357255300
-- Result: PASS; all job steps completed successfully on 2026-11-18.
-- Pytest, compileall, Ruff, JSON Schema, policy-manifest verification, and OPA/Rego checks all passed.
+- Latest verified implementation commit: `bbc3683555891033250bba72899903a5f018c96b`
+- CI run #55: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549671788
+- Result: PASS; all job steps completed successfully on 2026-11-19.
+- Pytest, compileall, Ruff, JSON Schema, policy-manifest verification, and OPA/Rego checks all passed. GitHub job metadata confirms each step passed; the connector did not expose the pytest summary count.
 - Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; OPA/Rego: `PASS: 9/9`.
 - CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
 - Ruff: `All checks passed!`
@@ -52,7 +52,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Candidate digest integrity and tamper detection | `tests/test_agents.py::test_critic_rejects_candidate_digest_tampering` | PASS |
 | Sequential three-expert orchestration and stop-on-abstain | `tests/test_agents.py` pipeline tests; `tests/test_api.py::test_agent_pipeline_endpoint_runs_three_independent_experts` | PASS |
 | Cross-run finding grouping with case-sensitive semantic fingerprints; all original findings/evidence retained | `tests/test_core.py::test_finding_fingerprint_ignores_run_specific_identifiers`; `tests/test_api.py::test_cross_run_finding_dedup_preserves_occurrences_and_groups`; `test_finding_group_listing_limit_is_bounded` | PASS |
-| Historical finding-group backfill | `tests/test_backfill.py`; `aegis.backfill.rebuild_finding_groups` | NOT IMPLEMENTED pending CI verification |
+| Historical finding-group backfill | `tests/test_backfill.py::test_backfill_reconciles_historical_findings_and_is_idempotent`; `test_backfill_aborts_without_partial_changes_on_malformed_source`; `test_backfill_rejects_mismatched_storage_and_payload_ids` | PASS (CI #55) |
 | Live LLM/MoE provider agents | No provider connected or exercised | NOT IMPLEMENTED |
 | Provider token/cost budgets and model calibration | No live provider; no model evaluation set | NOT IMPLEMENTED |
 | Immutable Python scope registry and startup validation | tests/test_policy.py registry immutability and invalid-registry tests | PASS |
@@ -90,4 +90,6 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Apply mode takes a SQLite `BEGIN IMMEDIATE` lock, validates and aggregates all source rows before replacing the index, and commits the rebuilt index and audit event atomically.
 - Repeated apply is a no-op when the derived index already matches source findings. Invalid or mismatched source records abort the transaction.
 - Regression tests: `tests/test_backfill.py`.
-- CI verification: pending for this implementation commit.
+- Implementation commit: `8537d365be3cf09bcad304712907fa1568e68daf`; lint correction: `bbc3683555891033250bba72899903a5f018c96b`.
+- CI run #54: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549492229 — FAIL at Ruff; pytest and compilation steps passed. Import organization was corrected before the next run; detailed Ruff diagnostics were not available in the job summary.
+- CI run #55: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549671788 — PASS; pytest, compileall, Ruff, JSON Schema, policy manifest, and OPA/Rego steps all succeeded.
