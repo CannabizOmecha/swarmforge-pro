@@ -1,25 +1,61 @@
 <!DOCTYPE html>
-<html>
-<head><script src="https://cdn.tailwindcss.com"></script></head>
-<body class="bg-gradient-to-br from-purple-900 p-8 text-white min-h-screen">
-<div class="max-w-4xl mx-auto">
-<h1 class="text-6xl font-bold text-center mb-12 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">🚀 SWARMFORGE PRO 2.0</h1>
-<div class="grid md:grid-cols-2 gap-8">
-<div class="bg-white/10 p-8 rounded-2xl">
-<h2 class="text-3xl font-bold mb-6">Deploy</h2>
-<button id="deploy" class="w-full bg-green-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-green-600">🚀 DEPLOY</button>
-<pre id="deployResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
-</div>
-<div class="bg-white/10 p-8 rounded-2xl">
-<h2 class="text-3xl font-bold mb-6">Revenue</h2>
-<button id="revenue" class="w-full bg-blue-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-blue-600">💰 REVENUE</button>
-<pre id="revenueResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
-</div>
-</div>
-</div>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SwarmForge</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--fg:#e8e8ea;--mute:#9aa0aa;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--acc:#6e8efb}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:24px 16px}
+textarea{width:100%;box-sizing:border-box;min-height:90px;background:var(--card);color:var(--fg);border:1px solid #2a2f3a;border-radius:8px;padding:10px;font:inherit}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer;margin:8px 8px 0 0}
+button:disabled{opacity:.5;cursor:wait}
+.card{background:var(--card);border-radius:10px;padding:14px 16px;margin-top:14px}
+.mute{color:var(--mute)} .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+h1{margin:0 0 4px} h3{margin:0 0 6px} ul{margin:4px 0;padding-left:20px}
+</style>
+</head>
+<body><main>
+<h1>SwarmForge</h1>
+<p class="mute" id="mode">Five expert agents propose, a red team attacks, a judge picks. Irreversible plans wait for you.</p>
+<textarea id="goal" placeholder="State the goal as one operational sentence, e.g. 'Find out if 10 local cafés would pay for a weekly inventory report.'"></textarea>
+<button id="run">Run swarm</button>
+<div id="out"></div>
+</main>
 <script>
-document.getElementById('deploy').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/deploy',{method:'POST'});document.getElementById('deployResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('deployResult').classList.remove('hidden')}catch(e){document.getElementById('deployResult').textContent='ERROR: Backend not running'}}
-document.getElementById('revenue').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/revenue');document.getElementById('revenueResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('revenueResult').classList.remove('hidden')}catch(e){document.getElementById('revenueResult').textContent='ERROR: Backend not running'}}
+const $=s=>document.querySelector(s), out=$('#out');
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function list(items){const u=el('ul');(items||[]).forEach(t=>u.append(el('li',null,t)));return u}
+fetch('/health').then(r=>r.json()).then(h=>{$('#mode').textContent+=` · mode: ${h.mode} · audit intact: ${h.audit_intact}`});
+function render(r){
+  out.replaceChildren();
+  const cls={completed:'ok',approved:'ok',awaiting_approval:'warn',rejected:'bad',failed:'bad'}[r.status];
+  const head=el('div','card');head.append(el('h3',cls,`Status: ${r.status}`));
+  if(r.error)head.append(el('p','bad',r.error));
+  if(r.verdict){
+    head.append(el('p',null,`Chosen: ${r.chosen.title}`),el('p',null,`Next step: ${r.verdict.next_step}`),
+      el('p','mute',`Success metric: ${r.verdict.success_metric}`),el('p','mute',`Why: ${r.verdict.why}`),
+      el('p','warn',`Strongest dissent: ${r.verdict.dissent}`),el('b',null,'Steps'),list(r.chosen.steps));
+  }
+  if(r.status==='awaiting_approval'){
+    head.append(el('p','warn','This plan includes irreversible steps. Nothing will be treated as approved until you decide.'));
+    for(const [label,ok] of [['Approve',true],['Reject',false]]){
+      const b=el('button',null,label);b.onclick=()=>decide(r.id,ok);head.append(b)}
+  }
+  out.append(head);
+  r.proposals.forEach((p,i)=>{
+    const c=el('div','card');c.append(el('h3',null,`[${i}] ${p.expert}${p.critique?` — critic ${p.critique.score}/10`:''}`));
+    if(p.error)c.append(el('p','bad',p.error));
+    if(p.proposal)c.append(el('p',null,p.proposal.title),el('p','mute',p.proposal.rationale),
+      el('b',null,'Risks'),list(p.proposal.risks));
+    if(p.critique&&p.critique.fatal_flaws.length)c.append(el('b','bad','Fatal flaws'),list(p.critique.fatal_flaws));
+    out.append(c);
+  });
+}
+async function call(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const j=await r.json();if(!r.ok)throw new Error(j.detail?JSON.stringify(j.detail):r.statusText);return j}
+$('#run').onclick=async()=>{const b=$('#run');b.disabled=true;out.replaceChildren(el('p','mute','Swarm deliberating…'));
+  try{render(await call('/runs',{goal:$('#goal').value}))}catch(e){out.replaceChildren(el('p','bad',`Error: ${e.message}`))}finally{b.disabled=false}};
+async function decide(id,approve){try{render(await call(`/runs/${id}/decision`,{approve}))}catch(e){alert(e.message)}}
 </script>
-</body>
-</html>
+</body></html>
