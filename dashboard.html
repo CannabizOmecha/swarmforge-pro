@@ -1,25 +1,106 @@
 <!DOCTYPE html>
-<html>
-<head><script src="https://cdn.tailwindcss.com"></script></head>
-<body class="bg-gradient-to-br from-purple-900 p-8 text-white min-h-screen">
-<div class="max-w-4xl mx-auto">
-<h1 class="text-6xl font-bold text-center mb-12 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">🚀 SWARMFORGE PRO 2.0</h1>
-<div class="grid md:grid-cols-2 gap-8">
-<div class="bg-white/10 p-8 rounded-2xl">
-<h2 class="text-3xl font-bold mb-6">Deploy</h2>
-<button id="deploy" class="w-full bg-green-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-green-600">🚀 DEPLOY</button>
-<pre id="deployResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
-</div>
-<div class="bg-white/10 p-8 rounded-2xl">
-<h2 class="text-3xl font-bold mb-6">Revenue</h2>
-<button id="revenue" class="w-full bg-blue-500 py-4 px-6 rounded-xl font-bold text-xl mb-4 hover:bg-blue-600">💰 REVENUE</button>
-<pre id="revenueResult" class="p-4 bg-black/50 rounded-xl text-sm hidden"></pre>
-</div>
-</div>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SwarmForge Pro</title>
+<script src="https://cdn.tailwindcss.com/3.4.5"></script>
+</head>
+<body class="bg-gradient-to-br from-purple-950 to-slate-900 text-white min-h-screen p-4 md:p-8">
+<div class="max-w-6xl mx-auto space-y-6">
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">SWARMFORGE PRO 3.0</h1>
+    <div class="flex items-center gap-2 text-sm">
+      <span id="dot" class="w-3 h-3 rounded-full bg-red-500"></span><span id="conn">offline</span>
+      <input id="token" type="password" placeholder="admin token (optional)" class="ml-4 bg-black/40 rounded px-2 py-1">
+    </div>
+  </header>
+
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-4" id="stats"></section>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <section class="bg-white/10 p-5 rounded-2xl">
+      <h2 class="text-2xl font-bold mb-3">Omniscience · agents</h2>
+      <table class="w-full text-sm"><thead class="text-left text-white/60"><tr><th>id</th><th>role</th><th>state</th><th>done/failed</th><th></th></tr></thead>
+      <tbody id="agents"></tbody></table>
+    </section>
+
+    <section class="bg-white/10 p-5 rounded-2xl space-y-3">
+      <h2 class="text-2xl font-bold">Omnipotence · act</h2>
+      <div class="flex gap-2 flex-wrap">
+        <select id="role" class="bg-black/40 rounded px-2 py-2"></select>
+        <input id="payload" value='{"goal":"draft launch post"}' class="flex-1 min-w-0 bg-black/40 rounded px-2 py-2 font-mono text-sm">
+        <button onclick="dispatch()" class="bg-green-600 hover:bg-green-700 rounded px-4 py-2 font-bold">Dispatch</button>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="api('/omnipotence/broadcast',{ping:true})" class="bg-blue-600 hover:bg-blue-700 rounded px-4 py-2">Broadcast ping</button>
+        <button onclick="api('/omnipotence/agents/'+sel())" class="bg-indigo-600 hover:bg-indigo-700 rounded px-4 py-2">Spawn agent</button>
+        <button onclick="proposeRevenue()" class="bg-amber-600 hover:bg-amber-700 rounded px-4 py-2">Propose revenue entry</button>
+      </div>
+      <h3 class="font-bold pt-2">Pending approvals <span class="text-white/50 font-normal">(irreversible actions wait for you)</span></h3>
+      <ul id="approvals" class="space-y-2 text-sm"></ul>
+    </section>
+  </div>
+
+  <section class="bg-white/10 p-5 rounded-2xl">
+    <h2 class="text-2xl font-bold mb-3">Live event stream</h2>
+    <pre id="log" class="bg-black/50 rounded-xl p-3 text-xs h-64 overflow-auto"></pre>
+  </section>
 </div>
 <script>
-document.getElementById('deploy').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/deploy',{method:'POST'});document.getElementById('deployResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('deployResult').classList.remove('hidden')}catch(e){document.getElementById('deployResult').textContent='ERROR: Backend not running'}}
-document.getElementById('revenue').onclick=async()=>{try{const r=await fetch('http://127.0.0.1:8000/revenue');document.getElementById('revenueResult').textContent=JSON.stringify(await r.json(),null,2);document.getElementById('revenueResult').classList.remove('hidden')}catch(e){document.getElementById('revenueResult').textContent='ERROR: Backend not running'}}
+const BASE = location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8000';
+const $ = id => document.getElementById(id);
+const sel = () => $('role').value;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, body) {
+  const headers = {'Content-Type': 'application/json'};
+  if ($('token').value) headers['X-Admin-Token'] = $('token').value;
+  const r = await fetch(BASE + path, {method: 'POST', headers, body: JSON.stringify(body ?? {})});
+  const j = await r.json(); if (!r.ok) alert(j.detail || r.status); refresh(); return j;
+}
+function dispatch() {
+  let payload; try { payload = JSON.parse($('payload').value) } catch { return alert('payload must be JSON') }
+  api('/omnipotence/tasks', {role: sel(), payload});
+}
+function proposeRevenue() {
+  const amount = prompt('Amount actually received?'); if (!amount) return;
+  api('/omnipotence/proposals', {action: 'record_revenue', params: {amount: Number(amount)}, reason: 'manual entry'});
+}
+const stopAgent = id => api('/omnipotence/proposals', {action: 'stop_agent', params: {agent_id: id}, reason: 'from dashboard'});
+const decide = (id, approve) => api(`/omnipotence/proposals/${id}/decide`, {approve});
+
+async function refresh() {
+  try {
+    const s = await (await fetch(BASE + '/omniscience/state')).json();
+    const live = s.agents.filter(a => a.state !== 'stopped').length;
+    const stat = (k, v) => `<div class="bg-white/10 rounded-xl p-4"><div class="text-white/60 text-sm">${k}</div><div class="text-2xl font-bold">${esc(v)}</div></div>`;
+    $('stats').innerHTML = stat('Live agents', live) + stat('Tasks', s.tasks.total)
+      + stat('Queued', Object.values(s.queues).reduce((a, b) => a + b, 0))
+      + stat('Recorded revenue', '$' + s.revenue.recorded_total);
+    $('agents').innerHTML = s.agents.map(a => `<tr class="border-t border-white/10"><td class="font-mono">${esc(a.id)}</td><td>${esc(a.role)}</td>
+      <td>${esc(a.state)}</td><td>${a.completed}/${a.failed}</td><td class="text-right space-x-1">
+      ${a.state === 'stopped' ? '' : `<button class="underline" onclick="api('/omnipotence/agents/${a.id}/${a.state === 'paused' ? 'resume' : 'pause'}')">${a.state === 'paused' ? 'resume' : 'pause'}</button>
+      <button class="underline text-red-300" onclick="stopAgent('${a.id}')">stop…</button>`}</td></tr>`).join('');
+    const roles = Object.keys(s.queues), cur = sel();
+    $('role').innerHTML = roles.map(r => `<option ${r === cur ? 'selected' : ''}>${esc(r)}</option>`).join('');
+    $('approvals').innerHTML = s.approvals_pending.map(p => `<li class="bg-black/30 rounded p-2 flex justify-between gap-2">
+      <span><b>${esc(p.action)}</b> ${esc(JSON.stringify(p.params))}</span><span class="space-x-2">
+      <button class="bg-green-700 rounded px-2" onclick="decide('${p.id}',true)">approve</button>
+      <button class="bg-red-700 rounded px-2" onclick="decide('${p.id}',false)">reject</button></span></li>`).join('') || '<li class="text-white/50">none</li>';
+  } catch { $('conn').textContent = 'offline — run: python main.py'; }
+}
+
+function connect() {
+  const es = new EventSource(BASE + '/omniscience/stream');
+  es.onopen = () => { $('dot').className = 'w-3 h-3 rounded-full bg-green-500'; $('conn').textContent = 'live'; };
+  es.onerror = () => { $('dot').className = 'w-3 h-3 rounded-full bg-red-500'; $('conn').textContent = 'reconnecting…'; };
+  es.onmessage = m => {
+    const e = JSON.parse(m.data); if (!e.seq) return;
+    $('log').textContent = `#${e.seq} ${new Date(e.ts * 1000).toLocaleTimeString()} ${e.kind} ${JSON.stringify(Object.fromEntries(Object.entries(e).filter(([k]) => !['seq','ts','kind'].includes(k))))}\n` + $('log').textContent.slice(0, 20000);
+    refresh();
+  };
+}
+refresh(); connect(); setInterval(refresh, 5000);
 </script>
 </body>
 </html>
