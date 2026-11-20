@@ -235,3 +235,48 @@ def test_finding_group_listing_limit_is_bounded(tmp_path, monkeypatch):
     client = client_for(tmp_path, monkeypatch)
     assert client.get("/finding-groups?limit=0").status_code == 422
     assert client.get("/finding-groups?limit=501").status_code == 422
+
+
+def test_http_spans_exclude_query_headers_and_request_values(tmp_path, monkeypatch):
+    from aegis.observability import SERVICE_VERSION, SPAN_EXPORTER
+
+    client = client_for(tmp_path, monkeypatch)
+    SPAN_EXPORTER.clear()
+    response = client.get(
+        "/health?email=person@example.com&token=query-secret",
+        headers={"Authorization": "Bearer header-secret"},
+    )
+    assert response.status_code == 200
+
+    spans = SPAN_EXPORTER.get_spans(limit=10)
+    health_span = next(
+        span for span in spans if span["attributes"].get("http.route") == "/health"
+    )
+    attributes = health_span["attributes"]
+    assert attributes == {
+        "http.request.method": "GET",
+        "http.route": "/health",
+        "http.response.status_code": 200,
+        "service.version": SERVICE_VERSION,
+    }
+    serialized = json.dumps(spans)
+    for secret in ("person@example.com", "query-secret", "header-secret"):
+        assert secret not in serialized
+
+
+def test_telemetry_spans_endpoint_enforces_bounded_limit(tmp_path, monkeypatch):
+    from aegis.observability import SPAN_EXPORTER
+
+    client = client_for(tmp_path, monkeypatch)
+    SPAN_EXPORTER.clear()
+    for _ in range(3):
+        assert client.get("/health").status_code == 200
+
+    response = client.get("/telemetry/spans?limit=1&token=not-retained")
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["spans"]) <= 1
+    assert payload["capacity"] == 256
+    assert client.get("/telemetry/spans?limit=0").status_code == 422
+    assert client.get("/telemetry/spans?limit=101").status_code == 422
+    assert "not-retained" not in json.dumps(payload)

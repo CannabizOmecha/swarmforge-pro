@@ -62,7 +62,8 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
 | Cross-run finding deduplication | Versioned semantic fingerprints; transactional occurrence grouping; regression tests preserve case-sensitive semantics and retain original findings/evidence | PASS (CI #46–#48) |
 | Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PASS (CI #52) |
-| OpenTelemetry traces and remote audit backend | Not implemented; local SQLite hash-chain audit log is implemented separately | NOT IMPLEMENTED |
+| Bounded local OpenTelemetry HTTP traces with strict attribute allowlist and sensitive-data regression tests | `tests/test_observability.py`; `tests/test_api.py::test_http_spans_exclude_query_headers_and_request_values`; `test_telemetry_spans_endpoint_enforces_bounded_limit` | PENDING CI |
+| Remote trace collector/exporter and durable telemetry backend | Not configured; no network telemetry path | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
 | API authentication and multi-tenant isolation | Not implemented; loopback binding required | BLOCKED before any non-loopback exposure |
@@ -93,3 +94,10 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Implementation commit: `8537d365be3cf09bcad304712907fa1568e68daf`; lint correction: `bbc3683555891033250bba72899903a5f018c96b`.
 - CI run #54: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549492229 — FAIL at Ruff; pytest and compilation steps passed. Import organization was corrected before the next run; detailed Ruff diagnostics were not available in the job summary.
 - CI run #55: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549671788 — PASS; pytest, compileall, Ruff, JSON Schema, policy manifest, and OPA/Rego steps all succeeded.
+
+## Privacy-safe observability increment
+
+- Implementation: `aegis/observability.py`; middleware and bounded read-only diagnostics: `aegis/api.py`; regression tests: `tests/test_observability.py` and `tests/test_api.py`; design: `docs/OBSERVABILITY.md`.
+- Exporter is in-memory only, capped at 256 sanitized span snapshots; no raw SDK spans are retained.
+- Only fixed HTTP methods, registered route templates, integer status codes, static service version, and duration are retained. Query strings, headers, bodies, client addresses, exception details, events, links, and unknown attributes are excluded.
+- Implementation commit and CI verification: pending.

@@ -43,6 +43,7 @@ ruff check aegis tests
 - GET /evidence/{evidence_id}/verify
 - GET /findings
 - GET /metrics
+- GET /telemetry/spans?limit=20 — bounded, privacy-filtered in-memory OpenTelemetry snapshots
 - GET /audit/events?limit=100 — list bounded sanitized audit events
 - GET /audit/verify — verify the local append-only audit hash chain
 
@@ -51,9 +52,13 @@ The expert pipeline is an in-memory demonstration and does not create persisted 
 A transient run failure returns HTTP 503 and an X-Workflow-ID response header. Retry POST /runs with the same idempotency key, or call the resume endpoint with that workflow ID. Execution is capped at three attempts. The final run/finding/evidence bundle and COMMITTED workflow state are written atomically.
 
 ## Current implementation status
-The local-synthetic API, policy boundary, privacy filtering, schema validation, statistical scoring, evidence verification, idempotency, deterministic replay, transactional workflow recovery, and deterministic expert runtime are implemented and tested. The expert runtime has typed task/result contracts, statically assigned least-privilege capabilities, a read-only fixture toolbox, per-stage deadlines, input/output size budgets, abstention behavior, and a separate critic stage.
+The local-synthetic API, policy boundary, privacy filtering, schema validation, statistical scoring, evidence verification, idempotency, deterministic replay, transactional workflow recovery, deterministic expert runtime, and bounded privacy-filtered local OpenTelemetry tracing are implemented and tested. The expert runtime has typed task/result contracts, statically assigned least-privilege capabilities, a read-only fixture toolbox, per-stage deadlines, input/output size budgets, abstention behavior, and a separate critic stage.
 
 This is not a production-grade distributed swarm. Live LLM agents, model-provider adapters, Temporal, NATS, external targets, multi-user authentication, and long-running cloud operation are not integrated or verified.
+
+## Privacy-safe observability
+
+HTTP requests are traced with OpenTelemetry using a bounded in-memory exporter. Only allowlisted method, route-template, response-status, static service-version, and duration metadata are retained. Query strings, headers, bodies, client addresses, exception details, span events, and links are excluded. See [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md). No trace data is sent over the network.
 
 ## Dependency management
 pyproject.toml is the single source of dependency constraints. requirements.txt delegates to project metadata to avoid maintaining a second, divergent dependency list. CI installs the project and development extras from that source. A fully hash-locked production dependency set remains a release-hardening task.

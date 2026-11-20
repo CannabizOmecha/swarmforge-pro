@@ -1,6 +1,6 @@
 import sqlite3
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from jsonschema.exceptions import ValidationError
 
 from .agent_runtime import (
@@ -15,6 +15,13 @@ from .agent_runtime import (
 from .engine import canonical_hash
 from .experts import EXPERTS, route
 from .models import TestRequest
+from .observability import (
+    SERVICE_VERSION,
+    SPAN_EXPORTER,
+    TRACER,
+    normalize_http_method,
+    route_template_for_scope,
+)
 from .policy import SCOPES, AuthorizationError
 from .store import Store, WorkflowStateConflict
 from .validation import validate_evidence_manifest
@@ -29,10 +36,29 @@ from .workflow import (
 
 app = FastAPI(
     title="AEGIS-MoE",
-    version="0.6.5",
+    version=SERVICE_VERSION,
     description="Local-first policy-constrained security assurance foundation",
 )
 store = Store()
+
+
+@app.middleware("http")
+async def observe_http_request(request: Request, call_next):
+    with TRACER.start_as_current_span(
+        "http.server.request",
+        record_exception=False,
+        set_status_on_exception=False,
+    ) as span:
+        span.set_attribute("http.request.method", normalize_http_method(request.method))
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        finally:
+            span.set_attribute("http.route", route_template_for_scope(request.scope))
+            span.set_attribute("http.response.status_code", status_code)
+            span.set_attribute("service.version", SERVICE_VERSION)
 
 
 @app.get("/health")
@@ -299,4 +325,12 @@ def metrics():
         **counts,
         "validated_findings": sum(1 for f in findings if f["state"] == "validated"),
         "false_positive_findings": sum(1 for f in findings if f["state"] == "false_positive"),
+    }
+
+@app.get("/telemetry/spans")
+def get_telemetry_spans(limit: int = Query(default=20, ge=1, le=100)):
+    return {
+        "spans": SPAN_EXPORTER.get_spans(limit),
+        "retained": SPAN_EXPORTER.retained_count,
+        "capacity": SPAN_EXPORTER.max_spans,
     }

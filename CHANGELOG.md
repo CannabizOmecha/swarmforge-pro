@@ -1,3 +1,10 @@
+## 0.6.6 — bounded privacy-safe OpenTelemetry tracing (CI verification pending)
+- Added HTTP server spans using the OpenTelemetry API and SDK with an in-memory exporter only; no network exporter or remote telemetry path is configured.
+- Retains at most 256 sanitized snapshots and exposes a bounded local diagnostic endpoint.
+- Allowlisted method, registered route template, response status, static service version, and duration only; drops query strings, headers, bodies, client addresses, exception details, span events, links, and unknown attributes.
+- Added regression tests for sensitive query/header exclusion, strict attribute filtering, route validation, and bounded retention.
+- Documented local-only scope and remote-exporter release gates.
+
 ## 0.6.5 — historical finding-group reconciliation (CI #55 passed)
 - Added a dry-run-first, explicit-apply backfill for historical findings created before cross-run grouping.
 - Rebuilds the derived finding-group index from validated source findings in one SQLite write transaction; malformed records abort without partial changes.
