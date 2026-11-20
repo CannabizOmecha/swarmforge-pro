@@ -1,7 +1,7 @@
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-from aegis.observability import BoundedSpanExporter, SERVICE_VERSION, sanitize_span_attributes
+from aegis.observability import SERVICE_VERSION, BoundedSpanExporter, sanitize_span_attributes
 
 
 def test_span_attribute_allowlist_drops_sensitive_and_unrecognized_values():

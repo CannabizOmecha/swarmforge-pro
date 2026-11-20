@@ -4,7 +4,7 @@ from threading import Lock
 
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult, SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, SpanExporter, SpanExportResult
 
 SERVICE_VERSION = "0.6.6"
 MAX_RETAINED_SPANS = 256
