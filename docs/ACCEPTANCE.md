@@ -5,11 +5,11 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `bbc3683555891033250bba72899903a5f018c96b`
-- CI run #55: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44549671788
-- Result: PASS; all job steps completed successfully on 2026-11-19.
-- Pytest, compileall, Ruff, JSON Schema, policy-manifest verification, and OPA/Rego checks all passed. GitHub job metadata confirms each step passed; the connector did not expose the pytest summary count.
-- Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; OPA/Rego: `PASS: 9/9`.
+- Latest verified implementation commit: `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`
+- CI run #58: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758328611
+- Result: PASS; all job steps completed successfully on 2026-11-20.
+- Pytest: `81 passed, 1 warning in 1.94s`; the warning is the existing upstream Starlette/httpx TestClient deprecation.
+- Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; policy manifest: verified; OPA/Rego: `PASS: 9/9`.
 - CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
@@ -62,7 +62,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | OPA invoked by the running API | Not implemented; Python remains runtime authorization layer | NOT IMPLEMENTED |
 | Cross-run finding deduplication | Versioned semantic fingerprints; transactional occurrence grouping; regression tests preserve case-sensitive semantics and retain original findings/evidence | PASS (CI #46–#48) |
 | Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PASS (CI #52) |
-| Bounded local OpenTelemetry HTTP traces with strict attribute allowlist and sensitive-data regression tests | `tests/test_observability.py`; `tests/test_api.py::test_http_spans_exclude_query_headers_and_request_values`; `test_telemetry_spans_endpoint_enforces_bounded_limit` | PENDING CI |
+| Bounded local OpenTelemetry HTTP traces with strict attribute allowlist and sensitive-data regression tests | `tests/test_observability.py`; `tests/test_api.py::test_http_spans_exclude_query_headers_and_request_values`; `test_telemetry_spans_endpoint_enforces_bounded_limit` | PASS (CI #58) |
 | Remote trace collector/exporter and durable telemetry backend | Not configured; no network telemetry path | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
@@ -100,4 +100,6 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Implementation: `aegis/observability.py`; middleware and bounded read-only diagnostics: `aegis/api.py`; regression tests: `tests/test_observability.py` and `tests/test_api.py`; design: `docs/OBSERVABILITY.md`.
 - Exporter is in-memory only, capped at 256 sanitized span snapshots; no raw SDK spans are retained.
 - Only fixed HTTP methods, registered route templates, integer status codes, static service version, and duration are retained. Query strings, headers, bodies, client addresses, exception details, events, links, and unknown attributes are excluded.
-- Implementation commit and CI verification: pending.
+- Implementation commit: `dbfbb44640bdda0bfe1b6a150d3100fd43b87063`; Ruff import-order correction: `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`.
+- CI run #57: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758195256 — FAIL at Ruff import ordering in the new observability module and test module; all 81 tests and compilation passed. Corrected in `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`.
+- CI run #58: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758328611 — PASS on the corrected implementation commit; 81 tests passed, compileall passed, Ruff passed, JSON Schema passed, policy manifest passed, and OPA/Rego tests passed 9/9.

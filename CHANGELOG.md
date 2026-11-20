@@ -1,4 +1,4 @@
-## 0.6.6 — bounded privacy-safe OpenTelemetry tracing (CI verification pending)
+## 0.6.6 — bounded privacy-safe OpenTelemetry tracing (CI #58 passed)
 - Added HTTP server spans using the OpenTelemetry API and SDK with an in-memory exporter only; no network exporter or remote telemetry path is configured.
 - Retains at most 256 sanitized snapshots and exposes a bounded local diagnostic endpoint.
 - Allowlisted method, registered route template, response status, static service version, and duration only; drops query strings, headers, bodies, client addresses, exception details, span events, links, and unknown attributes.
