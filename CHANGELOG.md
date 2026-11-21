@@ -16,6 +16,12 @@
 
 ## 0.6.7 - 2026-11-21
 
+- Added privacy-safe spans for authorization, synthetic execution, checkpoint, commit, and resume stages.
+- Added finite workflow stage/outcome attribute allowlists and trace regression tests.
+- Corrected import ordering after CI Ruff feedback.
+
+## 0.6.7 - 2026-11-21
+
 - Added privacy-safe traces for authorization, synthetic execution, checkpoint, commit, and resume stages.
 - Expanded the trace attribute allowlist with finite stage/outcome registries and regression tests.
 
