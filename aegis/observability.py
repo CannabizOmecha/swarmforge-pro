@@ -1,6 +1,6 @@
-from contextlib import contextmanager
 from collections import deque
 from collections.abc import Mapping, Sequence
+from contextlib import contextmanager
 from threading import Lock
 
 from opentelemetry.sdk.resources import Resource
