@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from collections import deque
 from collections.abc import Mapping, Sequence
 from threading import Lock
@@ -61,9 +62,6 @@ def sanitize_span_attributes(attributes: Mapping[str, object]) -> dict[str, str 
     if isinstance(outcome, str) and outcome in WORKFLOW_OUTCOMES:
         clean["aegis.workflow.outcome"] = outcome
     return clean
-
-
-from contextlib import contextmanager
 
 
 @contextmanager
