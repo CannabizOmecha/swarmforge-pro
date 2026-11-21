@@ -1,7 +1,13 @@
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-from aegis.observability import SERVICE_VERSION, BoundedSpanExporter, sanitize_span_attributes
+from aegis.observability import (
+    SERVICE_VERSION,
+    SPAN_EXPORTER,
+    BoundedSpanExporter,
+    sanitize_span_attributes,
+    workflow_stage,
+)
 
 
 def test_span_attribute_allowlist_drops_sensitive_and_unrecognized_values():
@@ -77,3 +83,25 @@ def test_exporter_rejects_unbounded_query_limits():
             pass
         else:
             raise AssertionError("invalid span query limit was accepted")
+
+
+def test_workflow_stage_trace_uses_registered_stage_and_outcome_only():
+    SPAN_EXPORTER.clear()
+    with workflow_stage("execute"):
+        pass
+    snapshot = SPAN_EXPORTER.get_spans(limit=1)[0]
+    assert snapshot["name"] == "internal.operation"
+    assert snapshot["attributes"] == {
+        "aegis.workflow.stage": "execute",
+        "aegis.workflow.outcome": "success",
+    }
+
+
+def test_workflow_stage_rejects_unregistered_stage_names():
+    try:
+        with workflow_stage("user-controlled-stage"):
+            pass
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unregistered workflow stage was accepted")
