@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from .engine import canonical_hash, execute_synthetic_run
 from .models import EvidenceRecord, Finding, RunRecord, TestRequest
+from .observability import workflow_stage
 from .policy import AuthorizationError, authorize
 from .store import Store, WorkflowStateConflict
 
@@ -60,7 +61,8 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
 
         if state == "accepted":
             try:
-                authorize(request.scope_id, "execute", request.batch_size)
+                with workflow_stage("authorize"):
+                    authorize(request.scope_id, "execute", request.batch_size)
             except AuthorizationError:
                 store.reject_workflow(workflow_id)
                 raise
@@ -78,9 +80,10 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
                     return _load_committed_response(store, workflow_id)
                 raise
             try:
-                run, findings, evidence = execute_synthetic_run(
-                    request.scope_id, request.batch_size, request.seed
-                )
+                with workflow_stage("execute"):
+                    run, findings, evidence = execute_synthetic_run(
+                        request.scope_id, request.batch_size, request.seed
+                    )
             except Exception as exc:
                 latest = store.record_workflow_failure(workflow_id, "execution_failed")
                 if latest["state"] == "exhausted":
@@ -93,9 +96,10 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
                 "evidence": [item.model_dump(mode="json") for item in evidence],
             }
             try:
-                store.transition_workflow(
-                    workflow_id, "authorized", "executed", stage_payload=stage_payload
-                )
+                with workflow_stage("checkpoint"):
+                    store.transition_workflow(
+                        workflow_id, "authorized", "executed", stage_payload=stage_payload
+                    )
             except WorkflowStateConflict:
                 latest = store.get_workflow(workflow_id)
                 if latest and latest["state"] == "committed":
@@ -112,13 +116,14 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
             evidence = [EvidenceRecord.model_validate(item) for item in payload["evidence"]]
             response = {"workflow_id": workflow_id, **payload}
             try:
-                store.save_bundle(
-                    run,
-                    findings,
-                    evidence,
-                    response_payload=response,
-                    workflow_id=workflow_id,
-                )
+                with workflow_stage("commit"):
+                    store.save_bundle(
+                        run,
+                        findings,
+                        evidence,
+                        response_payload=response,
+                        workflow_id=workflow_id,
+                    )
             except Exception as exc:
                 latest = store.get_workflow(workflow_id)
                 if latest and latest["state"] == "committed":
@@ -174,9 +179,10 @@ def resume_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
         raise WorkflowNotFound(workflow_id)
-    store.append_audit_event(
-        "workflow.resume_requested",
-        workflow_id,
-        {"state": workflow["state"]},
-    )
+    with workflow_stage("resume"):
+        store.append_audit_event(
+            "workflow.resume_requested",
+            workflow_id,
+            {"state": workflow["state"]},
+        )
     return _drive_workflow(store, workflow_id)
