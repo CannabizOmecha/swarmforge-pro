@@ -14,6 +14,11 @@
 
 # Changelog
 
+## 0.6.7 - 2026-11-21
+
+- Added privacy-safe traces for authorization, synthetic execution, checkpoint, commit, and resume stages.
+- Expanded the trace attribute allowlist with finite stage/outcome registries and regression tests.
+
 ## 0.6.4 — offline anomaly benchmark (CI #52 passed)
 - Added a versioned synthetic benchmark for robust anomaly scoring with nominal cases, benign variation, statistical outliers, zero-dispersion behavior, and missing-baseline abstention.
 - Reports confusion counts, precision, recall, false-positive rate, and accuracy at a configurable threshold.
