@@ -10,6 +10,9 @@ SERVICE_VERSION = "0.6.6"
 MAX_RETAINED_SPANS = 256
 MAX_QUERY_SPANS = 100
 
+WORKFLOW_STAGES = frozenset({"authorize", "execute", "checkpoint", "commit", "resume"})
+WORKFLOW_OUTCOMES = frozenset({"success", "failure", "rejected", "retry"})
+
 HTTP_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"})
 ROUTE_TEMPLATES = frozenset(
     {
@@ -51,7 +54,33 @@ def sanitize_span_attributes(attributes: Mapping[str, object]) -> dict[str, str 
     service_version = attributes.get("service.version")
     if service_version == SERVICE_VERSION:
         clean["service.version"] = SERVICE_VERSION
+    stage = attributes.get("aegis.workflow.stage")
+    if isinstance(stage, str) and stage in WORKFLOW_STAGES:
+        clean["aegis.workflow.stage"] = stage
+    outcome = attributes.get("aegis.workflow.outcome")
+    if isinstance(outcome, str) and outcome in WORKFLOW_OUTCOMES:
+        clean["aegis.workflow.outcome"] = outcome
     return clean
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def workflow_stage(stage: str):
+    """Trace a fixed workflow stage using only allowlisted, low-cardinality metadata."""
+    if stage not in WORKFLOW_STAGES:
+        raise ValueError("workflow stage is not registered")
+    with TRACER.start_as_current_span(
+        "internal.operation", attributes={"aegis.workflow.stage": stage}
+    ) as span:
+        try:
+            yield span
+        except Exception:
+            span.set_attribute("aegis.workflow.outcome", "failure")
+            raise
+        else:
+            span.set_attribute("aegis.workflow.outcome", "success")
 
 
 class BoundedSpanExporter(SpanExporter):
