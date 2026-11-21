@@ -28,3 +28,10 @@ Regression coverage verifies the attribute allowlist, rejection of unregistered 
 ## Limitations
 
 This does not provide distributed context propagation, durable retention, sampling policy, a remote collector, alerting, or production SLOs. A remote exporter must not be added until authentication, transport security, data classification, retention, and user authorization are separately reviewed. Keep the API bound to 127.0.0.1.
+
+
+## Workflow-stage tracing
+
+The orchestration driver emits internal spans for the fixed stages authorize, execute, checkpoint, commit, and resume. Stage and outcome fields are accepted only from finite registries; caller-controlled stage names are rejected. The exporter continues to reduce all span names to a fixed HTTP/internal label and retains only registered stage/outcome values. No workflow identifiers, idempotency keys, finding identifiers, exception text, or request payloads are added to traces.
+
+Additional regression tests verify a successful stage produces only the two registered metadata attributes and an unregistered stage is rejected.
