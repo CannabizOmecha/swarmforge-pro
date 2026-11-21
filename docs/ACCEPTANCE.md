@@ -103,3 +103,12 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Implementation commit: `dbfbb44640bdda0bfe1b6a150d3100fd43b87063`; Ruff import-order correction: `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`.
 - CI run #57: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758195256 — FAIL at Ruff import ordering in the new observability module and test module; all 81 tests and compilation passed. Corrected in `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`.
 - CI run #58: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758328611 — PASS on the corrected implementation commit; 81 tests passed, compileall passed, Ruff passed, JSON Schema passed, policy manifest passed, and OPA/Rego tests passed 9/9.
+
+
+## Workflow-stage tracing increment (2026-11-21)
+
+- Implementation: `workflow_stage` helper in `aegis/observability.py`; orchestration instrumentation in `aegis/workflow.py` for authorize, execute, checkpoint, commit, and resume.
+- Finite stage and outcome allowlists prevent caller-controlled trace cardinality. Exporter remains in-memory, sanitized, bounded, and network-free.
+- Regression tests: `tests/test_observability.py::test_workflow_stage_trace_uses_registered_stage_and_outcome_only`; `test_workflow_stage_rejects_unregistered_stage_names`.
+- CI run #65: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44916223520 — FAIL at Ruff I001 import ordering; pytest `83 passed, 1 warning`, compileall passed. Exact Ruff diagnostic fetched: reorder `collections` imports before `contextlib`. Corrected in the next commit.
+- Final verification: pending workflow for the lint correction and acceptance update; do not mark PASS until it completes.
