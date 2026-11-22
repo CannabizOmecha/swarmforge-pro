@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from .engine import canonical_hash, execute_synthetic_run
 from .models import EvidenceRecord, Finding, RunRecord, TestRequest
-from .observability import workflow_stage
+from .observability import RELIABILITY_METRICS, workflow_stage
 from .policy import AuthorizationError, authorize
 from .store import Store, WorkflowStateConflict
 
@@ -87,7 +87,9 @@ def _drive_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
             except Exception as exc:
                 latest = store.record_workflow_failure(workflow_id, "execution_failed")
                 if latest["state"] == "exhausted":
+                    RELIABILITY_METRICS.increment("workflow_retries", "exhausted")
                     raise WorkflowRetryExhausted(workflow_id) from exc
+                RELIABILITY_METRICS.increment("workflow_retries", "scheduled")
                 raise WorkflowExecutionError(workflow_id, "execution") from exc
 
             stage_payload = {
@@ -179,10 +181,28 @@ def resume_workflow(store: Store, workflow_id: str) -> dict[str, Any]:
     workflow = store.get_workflow(workflow_id)
     if workflow is None:
         raise WorkflowNotFound(workflow_id)
-    with workflow_stage("resume"):
-        store.append_audit_event(
-            "workflow.resume_requested",
-            workflow_id,
-            {"state": workflow["state"]},
-        )
-    return _drive_workflow(store, workflow_id)
+    initial_state = workflow["state"]
+    try:
+        with workflow_stage("resume"):
+            store.append_audit_event(
+                "workflow.resume_requested",
+                workflow_id,
+                {"state": initial_state},
+            )
+            result = _drive_workflow(store, workflow_id)
+    except Exception:
+        latest = store.get_workflow(workflow_id)
+        state = latest["state"] if latest is not None else "unknown"
+        if state in {"authorized", "executed"}:
+            outcome = "retry_pending"
+        elif state == "exhausted":
+            outcome = "exhausted"
+        elif state == "rejected":
+            outcome = "rejected"
+        else:
+            outcome = "failed"
+        RELIABILITY_METRICS.increment("workflow_recovery_outcomes", outcome)
+        raise
+    outcome = "already_committed" if initial_state == "committed" else "completed"
+    RELIABILITY_METRICS.increment("workflow_recovery_outcomes", outcome)
+    return result

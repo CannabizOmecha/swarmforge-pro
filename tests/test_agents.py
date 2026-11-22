@@ -269,3 +269,30 @@ def test_pipeline_stops_when_independent_validator_abstains():
         "security_validator",
     ]
     assert result.summary["stopped_after"] == "security_validator"
+
+
+def test_abstention_metrics_use_only_registered_reason_labels():
+    from aegis.observability import RELIABILITY_METRICS
+
+    before = RELIABILITY_METRICS.snapshot()
+
+    class SlowAdapter(DeterministicMockAdapter):
+        async def execute(self, payload, tools):
+            await asyncio.sleep(0.1)
+            return await super().execute(payload, tools)
+
+    result = asyncio.run(
+        execute_agent_task(
+            AgentTask(
+                task_type=AgentTaskType.INSPECT_FIXTURE,
+                payload={"fixture_id": "authz-deny-v1"},
+                deadline_ms=10,
+            ),
+            {"test_generator": SlowAdapter("test_generator")},
+        )
+    )
+    assert result.status == AgentStatus.ABSTAINED
+    after = RELIABILITY_METRICS.snapshot()
+    assert after["expert_abstentions"]["deadline_exceeded"] == (
+        before["expert_abstentions"]["deadline_exceeded"] + 1
+    )

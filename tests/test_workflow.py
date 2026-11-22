@@ -171,3 +171,40 @@ def test_legacy_idempotency_records_survive_workflow_upgrade(tmp_path):
     with pytest.raises(IdempotencyConflict):
         process_run(store, different_request)
     assert store.counts()["runs"] == 1
+
+
+def test_retry_and_recovery_outcomes_are_counted_without_identifiers(tmp_path, monkeypatch):
+    from aegis.observability import RELIABILITY_METRICS
+
+    store = Store(str(tmp_path / "reliability-retry.sqlite3"))
+    before = RELIABILITY_METRICS.snapshot()
+    original = workflow.execute_synthetic_run
+    calls = 0
+
+    def fail_once(*args):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("private synthetic diagnostic")
+        return original(*args)
+
+    monkeypatch.setattr(workflow, "execute_synthetic_run", fail_once)
+    with pytest.raises(WorkflowExecutionError) as caught:
+        process_run(store, request("reliability-retry-key-001"))
+    workflow_id = caught.value.workflow_id
+    after_failure = RELIABILITY_METRICS.snapshot()
+    assert after_failure["workflow_retries"]["scheduled"] == (
+        before["workflow_retries"]["scheduled"] + 1
+    )
+    assert after_failure["workflow_stage_failures"]["execute"] == (
+        before["workflow_stage_failures"]["execute"] + 1
+    )
+
+    resume_workflow(store, workflow_id)
+    after_resume = RELIABILITY_METRICS.snapshot()
+    assert after_resume["workflow_recovery_outcomes"]["completed"] == (
+        before["workflow_recovery_outcomes"]["completed"] + 1
+    )
+    serialized = repr(after_resume)
+    assert workflow_id not in serialized
+    assert "private synthetic diagnostic" not in serialized

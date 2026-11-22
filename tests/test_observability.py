@@ -105,3 +105,21 @@ def test_workflow_stage_rejects_unregistered_stage_names():
         pass
     else:
         raise AssertionError("unregistered workflow stage was accepted")
+
+
+def test_reliability_counter_registry_is_fixed_cardinality_and_saturating():
+    from aegis.observability import BoundedReliabilityCounters
+
+    counters = BoundedReliabilityCounters(max_value=2)
+    counters.increment("workflow_retries", "scheduled")
+    counters.increment("workflow_retries", "scheduled")
+    counters.increment("workflow_retries", "scheduled")
+    snapshot = counters.snapshot()
+    assert snapshot["workflow_retries"]["scheduled"] == 2
+    assert len(snapshot["workflow_retries"]) == 2
+    try:
+        counters.increment("workflow_retries", "task-id-from-caller")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("caller-controlled metric label was accepted")

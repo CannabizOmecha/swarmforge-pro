@@ -18,6 +18,7 @@ from .models import TestRequest
 from .observability import (
     SERVICE_VERSION,
     SPAN_EXPORTER,
+    RELIABILITY_METRICS,
     TRACER,
     normalize_http_method,
     route_template_for_scope,
@@ -325,6 +326,7 @@ def metrics():
         **counts,
         "validated_findings": sum(1 for f in findings if f["state"] == "validated"),
         "false_positive_findings": sum(1 for f in findings if f["state"] == "false_positive"),
+        "workflow_reliability": RELIABILITY_METRICS.snapshot(),
     }
 
 @app.get("/telemetry/spans")

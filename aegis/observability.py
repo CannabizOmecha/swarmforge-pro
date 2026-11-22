@@ -76,6 +76,7 @@ def workflow_stage(stage: str):
             yield span
         except Exception:
             span.set_attribute("aegis.workflow.outcome", "failure")
+            RELIABILITY_METRICS.increment("workflow_stage_failures", stage)
             raise
         else:
             span.set_attribute("aegis.workflow.outcome", "success")
@@ -141,6 +142,55 @@ class BoundedSpanExporter(SpanExporter):
         with self._lock:
             self._shutdown = True
 
+
+# Fixed-cardinality reliability counters. No caller-supplied values or identifiers
+# are accepted as labels; all counters are process-local and saturating.
+RELIABILITY_COUNTERS = {
+    "workflow_retries": frozenset({"scheduled", "exhausted"}),
+    "expert_abstentions": frozenset(
+        {"deadline_exceeded", "adapter_error", "scope_not_authorized", "unsupported_task", "other"}
+    ),
+    "workflow_stage_failures": WORKFLOW_STAGES,
+    "workflow_recovery_outcomes": frozenset(
+        {"completed", "already_committed", "retry_pending", "exhausted", "rejected", "failed"}
+    ),
+}
+MAX_COUNTER_VALUE = (1 << 63) - 1
+
+
+class BoundedReliabilityCounters:
+    """Thread-safe, finite-label counter registry with bounded integer storage."""
+
+    def __init__(self, max_value: int = MAX_COUNTER_VALUE) -> None:
+        if type(max_value) is not int or not 1 <= max_value <= MAX_COUNTER_VALUE:
+            raise ValueError("Counter maximum must be a positive bounded integer.")
+        self._max_value = max_value
+        self._values = {
+            family: {label: 0 for label in labels}
+            for family, labels in RELIABILITY_COUNTERS.items()
+        }
+        self._lock = Lock()
+
+    def increment(self, family: str, label: str) -> None:
+        if family not in RELIABILITY_COUNTERS or label not in RELIABILITY_COUNTERS[family]:
+            raise ValueError("Reliability metric label is not registered.")
+        with self._lock:
+            value = self._values[family][label]
+            self._values[family][label] = min(value + 1, self._max_value)
+
+    def snapshot(self) -> dict[str, dict[str, int]]:
+        with self._lock:
+            return {family: dict(values) for family, values in self._values.items()}
+
+
+def record_expert_abstention(reason: str | None) -> None:
+    """Map untrusted adapter reasons to a fixed low-cardinality metric label."""
+    allowed = RELIABILITY_COUNTERS["expert_abstentions"]
+    label = reason if isinstance(reason, str) and reason in allowed else "other"
+    RELIABILITY_METRICS.increment("expert_abstentions", label)
+
+
+RELIABILITY_METRICS = BoundedReliabilityCounters()
 
 SPAN_EXPORTER = BoundedSpanExporter()
 TRACER_PROVIDER = TracerProvider(

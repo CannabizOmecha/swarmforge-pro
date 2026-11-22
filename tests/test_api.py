@@ -280,3 +280,21 @@ def test_telemetry_spans_endpoint_enforces_bounded_limit(tmp_path, monkeypatch):
     assert client.get("/telemetry/spans?limit=0").status_code == 422
     assert client.get("/telemetry/spans?limit=101").status_code == 422
     assert "not-retained" not in json.dumps(payload)
+
+
+def test_metrics_endpoint_exposes_bounded_reliability_counters(tmp_path, monkeypatch):
+    client = client_for(tmp_path, monkeypatch)
+    metrics = client.get("/metrics").json()
+    counters = metrics["workflow_reliability"]
+    assert set(counters) == {
+        "workflow_retries",
+        "expert_abstentions",
+        "workflow_stage_failures",
+        "workflow_recovery_outcomes",
+    }
+    assert all(
+        type(value) is int and value >= 0
+        for family in counters.values()
+        for value in family.values()
+    )
+    assert len(counters["workflow_stage_failures"]) == 5
