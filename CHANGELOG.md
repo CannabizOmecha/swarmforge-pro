@@ -2,6 +2,7 @@
 - Added fixed-cardinality, thread-safe counters for retry scheduling/exhaustion, expert abstentions, registered workflow-stage failures, and recovery outcomes.
 - Exposed aggregate counters through the existing local `/metrics` endpoint; labels reject unregistered values and counters saturate at a fixed integer bound.
 - Kept telemetry in-memory and network-free; no identifiers, exception text, request data, or model output are included. Added tests and operational/privacy limits documentation.
+- CI run #72 verified reliability metrics on implementation SHA `946b6f264acec53b7959a646d1f98a01773d2639`: 87 tests passed; compile, Ruff, JSON Schema, policy manifest, and OPA/Rego 9/9 passed.
 
 ## 0.6.6 — bounded privacy-safe OpenTelemetry tracing (CI #58 passed)
 - Added HTTP server spans using the OpenTelemetry API and SDK with an in-memory exporter only; no network exporter or remote telemetry path is configured.
