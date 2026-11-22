@@ -16,9 +16,9 @@ from .engine import canonical_hash
 from .experts import EXPERTS, route
 from .models import TestRequest
 from .observability import (
+    RELIABILITY_METRICS,
     SERVICE_VERSION,
     SPAN_EXPORTER,
-    RELIABILITY_METRICS,
     TRACER,
     normalize_http_method,
     route_template_for_scope,
