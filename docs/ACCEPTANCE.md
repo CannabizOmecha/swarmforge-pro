@@ -5,27 +5,15 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified reliability-metrics implementation commit: `946b6f264acec53b7959a646d1f98a01773d2639`
-- CI run #72: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45048297480
-- Result: PASS; exact head SHA checked. Pytest `87 passed, 1 warning`; compileall, Ruff, JSON Schema, immutable policy manifest, OPA installation, Rego format/check, and OPA tests all passed (9/9). All 25 listed job steps, including setup, pytest, compileall, Ruff, JSON Schema, policy-manifest verification, OPA installation, Rego format/check/tests, and cleanup, completed successfully.
-- Pytest: `83 passed, 1 warning` (observed in implementation run #68; final #69 reran the same unchanged implementation plus acceptance documentation).
-- Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; policy manifest: verified; OPA/Rego: `PASS: 9/9`.
-- Workflow-stage tracing: implemented for authorize, execute, checkpoint, commit, and resume; finite stage/outcome allowlists and sanitized bounded exporter. Test coverage is recorded below.
-- CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
-- Ruff: `All checks passed!`
-- JSON Schema: `JSON Schema contracts valid`
-- Policy manifest: verified policy version 1.0.0 and SHA-256 `50a42b6d44bd45eb53285c846cd388e9693b146611f1fabbcc63afc4c9204759`.
-- OPA CLI: pinned 1.22.4 binary digest verified; Rego format and compilation checks passed; Rego tests: `9/9`.
-- Audit chain: append-only triggers, hash-chain verification, tamper detection, workflow event recording, and agent/pipeline audit API tests passed.
-- CI run #41: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138196351 — PASS, policy manifest and OPA verification.
-- CI run #38: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44137351212 — PASS, initial OPA integration.
-- CI run #33: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44136166329 — PASS, deterministic three-expert pipeline.
-- CI run #32: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135889614 — PASS, first typed runtime increment.
-- CI run #31: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135757865 — FAIL, pytest passed but Ruff flagged a broad exception boundary and import ordering; corrected.
-- CI run #30: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44135594423 — FAIL, critic capability-use regression; corrected through the scoped toolbox.
-- CI run #39: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138000752 — FAIL, Ruff import-source rule; corrected.
-- CI run #40: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44138099718 — FAIL, Ruff import ordering; corrected.
-- Historical CI #7 root cause was a stale test calling the removed Store.save_run method after the transactional save_bundle refactor; this was a test/implementation contract mismatch, not a security finding.
+- Latest verified implementation commit: `d7f1dc6a5ef037cdb456a665a99af9197f695945`
+- CI run #75: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45049353434
+- Result: PASS; exact head SHA checked. Pytest `88 passed, 1 warning`; compileall, Ruff, JSON Schema, immutable policy manifest, pinned OPA installation, Rego format/check, and OPA tests all passed (9/9).
+- Reliability counters: bounded fixed-cardinality retry, abstention, workflow-stage failure, and recovery outcome counters. Tests cover retry scheduling, retry exhaustion, recovery completion/exhaustion, and exclusion of workflow identifiers and private exception text.
+- Workflow-stage tracing: fixed stage/outcome registries and sanitized bounded exporter.
+- Repository governance: PR template and contribution rules added. GitHub branch protection is **not yet active**; see `docs/BRANCH_PROTECTION.md` for the required administrator configuration and verification procedure.
+- CI run #72: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45048297480 — PASS, initial reliability-metrics implementation.
+- CI run #74: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45048435400 — PASS, verified reliability metrics documentation and changelog.
+- Historical CI #7 root cause: stale test called the removed Store.save_run method after the transactional save_bundle refactor; this was a test/implementation contract mismatch, not a security finding.
 
 ## Acceptance matrix
 
