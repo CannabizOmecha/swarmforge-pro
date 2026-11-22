@@ -5,9 +5,9 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit before reliability-metrics increment: `32578bb38db5deae78625e5148e52a14f7d86faf`
-- CI run #70: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45047589328
-- Result: PASS; job logs inspected on 2026-11-22. Reliability metrics below remain pending CI until the new implementation commit completes. All 25 listed job steps, including setup, pytest, compileall, Ruff, JSON Schema, policy-manifest verification, OPA installation, Rego format/check/tests, and cleanup, completed successfully.
+- Latest verified reliability-metrics implementation commit: `946b6f264acec53b7959a646d1f98a01773d2639`
+- CI run #72: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45048297480
+- Result: PASS; exact head SHA checked. Pytest `87 passed, 1 warning`; compileall, Ruff, JSON Schema, immutable policy manifest, OPA installation, Rego format/check, and OPA tests all passed (9/9). All 25 listed job steps, including setup, pytest, compileall, Ruff, JSON Schema, policy-manifest verification, OPA installation, Rego format/check/tests, and cleanup, completed successfully.
 - Pytest: `83 passed, 1 warning` (observed in implementation run #68; final #69 reran the same unchanged implementation plus acceptance documentation).
 - Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; policy manifest: verified; OPA/Rego: `PASS: 9/9`.
 - Workflow-stage tracing: implemented for authorize, execute, checkpoint, commit, and resume; finite stage/outcome allowlists and sanitized bounded exporter. Test coverage is recorded below.
@@ -130,4 +130,5 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Four fixed counter families: retry scheduling/exhaustion, expert abstention reason, registered stage failures, and recovery outcome. Labels are closed enums; unknown labels are rejected and counts saturate at 63-bit maximum.
 - Process-local, non-durable counters only; no identifiers, exception text, request content, or agent output; no network exporter.
 - Tests: `tests/test_observability.py::test_reliability_counter_registry_is_fixed_cardinality_and_saturating`; `tests/test_workflow.py::test_retry_and_recovery_outcomes_are_counted_without_identifiers`; `tests/test_agents.py::test_abstention_metrics_use_only_registered_reason_labels`; `tests/test_api.py::test_metrics_endpoint_exposes_bounded_reliability_counters`.
-- Implementation CI verification: pending; do not mark PASS until workflow completes for the implementation SHA.
+- Status: PASS on implementation SHA `946b6f264acec53b7959a646d1f98a01773d2639`, CI #72 above. Retry and stage-failure increments are exercised by the transient execution-failure recovery test; deadline abstention and the `/metrics` bounded schema are tested.
+- CI #71: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/45048238203 — FAIL at Ruff I001 import ordering in `aegis/api.py`; pytest `87 passed` and compileall passed. Corrected import order in commit `946b6f264acec53b7959a646d1f98a01773d2639`; CI #72 passed.
