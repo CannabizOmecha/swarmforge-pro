@@ -208,3 +208,41 @@ def test_retry_and_recovery_outcomes_are_counted_without_identifiers(tmp_path, m
     serialized = repr(after_resume)
     assert workflow_id not in serialized
     assert "private synthetic diagnostic" not in serialized
+
+
+def test_exhausted_retry_and_recovery_metrics_are_counted_without_details(
+    tmp_path, monkeypatch
+):
+    from aegis.observability import RELIABILITY_METRICS
+
+    store = Store(str(tmp_path / "reliability-exhausted.sqlite3"))
+    before = RELIABILITY_METRICS.snapshot()
+
+    def always_fail(*args):
+        raise RuntimeError("private exhausted diagnostic")
+
+    monkeypatch.setattr(workflow, "execute_synthetic_run", always_fail)
+    workflow_id = None
+    for attempt in range(3):
+        with pytest.raises((WorkflowExecutionError, WorkflowRetryExhausted)) as caught:
+            process_run(store, request("reliability-exhausted-key-01"))
+        workflow_id = caught.value.workflow_id
+
+    after_attempts = RELIABILITY_METRICS.snapshot()
+    assert after_attempts["workflow_retries"]["exhausted"] == (
+        before["workflow_retries"]["exhausted"] + 1
+    )
+    assert after_attempts["workflow_stage_failures"]["execute"] == (
+        before["workflow_stage_failures"]["execute"] + 3
+    )
+
+    with pytest.raises(WorkflowRetryExhausted):
+        resume_workflow(store, workflow_id)
+
+    after_recovery = RELIABILITY_METRICS.snapshot()
+    assert after_recovery["workflow_recovery_outcomes"]["exhausted"] == (
+        before["workflow_recovery_outcomes"]["exhausted"] + 1
+    )
+    serialized = repr(after_recovery)
+    assert workflow_id not in serialized
+    assert "private exhausted diagnostic" not in serialized
