@@ -5,11 +5,12 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 ## Latest implementation verification
 
 - Branch: `aegis-moe-foundation`
-- Latest verified implementation commit: `6b6de3746c8b44bc16c0dc34bb95cb5e69334871`
-- CI run #58: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44758328611
-- Result: PASS; all job steps completed successfully on 2026-11-20.
-- Pytest: `81 passed, 1 warning in 1.94s`; the warning is the existing upstream Starlette/httpx TestClient deprecation.
+- Latest verified implementation commit: `b107278bd0d1ab7a9206c105cd54aca37e2677d8`
+- CI run #69: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44916331577
+- Result: PASS; GitHub Actions job completed on 2026-11-21. All 25 listed job steps, including setup, pytest, compileall, Ruff, JSON Schema, policy-manifest verification, OPA installation, Rego format/check/tests, and cleanup, completed successfully.
+- Pytest: `83 passed, 1 warning` (observed in implementation run #68; final #69 reran the same unchanged implementation plus acceptance documentation).
 - Ruff: `All checks passed!`; JSON Schema: `JSON Schema contracts valid`; policy manifest: verified; OPA/Rego: `PASS: 9/9`.
+- Workflow-stage tracing: implemented for authorize, execute, checkpoint, commit, and resume; finite stage/outcome allowlists and sanitized bounded exporter. Test coverage is recorded below.
 - CI run #46: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44140357487 — PASS, initial cross-run finding deduplication.
 - Ruff: `All checks passed!`
 - JSON Schema: `JSON Schema contracts valid`
@@ -63,6 +64,7 @@ This matrix reports the local-synthetic implementation only. PASS means a named 
 | Cross-run finding deduplication | Versioned semantic fingerprints; transactional occurrence grouping; regression tests preserve case-sensitive semantics and retain original findings/evidence | PASS (CI #46–#48) |
 | Offline robust-anomaly benchmark (known statistical anomalies, benign variation, zero-MAD, no-baseline abstention) | `tests/test_benchmark.py` | PASS (CI #52) |
 | Bounded local OpenTelemetry HTTP traces with strict attribute allowlist and sensitive-data regression tests | `tests/test_observability.py`; `tests/test_api.py::test_http_spans_exclude_query_headers_and_request_values`; `test_telemetry_spans_endpoint_enforces_bounded_limit` | PASS (CI #58) |
+| Workflow-stage spans use fixed stage/outcome registries and preserve telemetry privacy | `tests/test_observability.py::test_workflow_stage_trace_uses_registered_stage_and_outcome_only`; `test_workflow_stage_rejects_unregistered_stage_names`; CI #68 implementation PASS and #69 final documentation PASS | PASS |
 | Remote trace collector/exporter and durable telemetry backend | Not configured; no network telemetry path | NOT IMPLEMENTED |
 | General-purpose migration framework | Additive SQLite migrations only | NOT IMPLEMENTED |
 | Distributed workflow engine and multi-host recovery | SQLite workflow state is single-node only | NOT IMPLEMENTED |
@@ -112,3 +114,11 @@ Keep the API bound to `127.0.0.1`. Do not expose it on a LAN or public interface
 - Regression tests: `tests/test_observability.py::test_workflow_stage_trace_uses_registered_stage_and_outcome_only`; `test_workflow_stage_rejects_unregistered_stage_names`.
 - CI run #65: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44916223520 — FAIL at Ruff I001 import ordering; pytest `83 passed, 1 warning`, compileall passed. Exact Ruff diagnostic fetched: reorder `collections` imports before `contextlib`. Corrected in the next commit.
 - CI run #68: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44916287286 — PASS on implementation/changelog SHA `629fb03af6de6d94cb8e4c316d739810edc2fd5b` (2026-11-21). Exact logs: `83 passed, 1 warning in 1.33s`; compileall passed; Ruff `All checks passed!`; JSON Schema `JSON Schema contracts valid`; immutable policy manifest verified; OPA/Rego `PASS: 9/9`. The single warning is the existing Starlette/httpx TestClient deprecation.
+
+
+## Workflow-stage tracing final verification (2026-11-21)
+
+- Final branch head inspected on 2026-11-22: `b107278bd0d1ab7a9206c105cd54aca37e2677d8`; recent commits are workflow tracing implementation, lint correction, and verification documentation.
+- Final CI run #69: https://github.com/CannabizOmecha/swarmforge-pro/actions/runs/44916331577 — completed successfully. Job ID `136882620175`; all reported steps succeeded, including tests, compile, Ruff, schema, manifest, and OPA/Rego 9/9.
+- The previous matrix was stale (it named CI #58 and omitted stage-level tracing); this update corrects the top-level verified SHA/run and explicitly adds the workflow-stage criterion.
+- No source code changed in this acceptance-matrix refresh. CI will verify the documentation-only commit itself.
